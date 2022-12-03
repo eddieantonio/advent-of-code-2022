@@ -23,13 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let answer = all_rucksacks[..]
         .chunks(3)
         .map(|group| {
-            let (a, b, c) = (&group[0], &group[1], &group[2]);
-            let a: HashSet<_> = a.items().collect();
-            let b: HashSet<_> = b.items().collect();
-            let c: HashSet<_> = c.items().collect();
-
-            let all: HashSet<_> = a.intersection(&b).copied().collect();
-            let all: HashSet<_> = all.intersection(&c).collect();
+            let all = grand_intersection(group.iter().map(|x| x.items()));
             assert_eq!(1, all.len());
 
             all.into_iter().next().unwrap().value()
@@ -38,6 +32,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("{answer}");
     Ok(())
+}
+
+fn grand_intersection<'a, T: Iterator<Item = Items<'a>>>(collections: T) -> HashSet<Item> {
+    collections
+        .map(|items| items.collect::<HashSet<Item>>())
+        .reduce(|a, b| a.intersection(&b).copied().collect())
+        .unwrap()
 }
 
 impl Item {
