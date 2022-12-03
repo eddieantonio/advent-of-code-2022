@@ -14,16 +14,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let Some((index, calories)) = elves
+    let mut all_elves: Vec<_> = elves
         .into_iter()
         .map(|pack| pack.into_iter().sum::<i32>())
-        .enumerate()
-        .max_by_key(|(_, elf)| *elf) else {
-            panic!("should not happen");
-        };
+        .collect();
 
-    let the_elf = index + 1;
-    println!("Elf {the_elf} is carrying {calories} calories.");
+    all_elves.sort();
+
+    let top_three = all_elves.into_iter().rev().take(3).sum::<i32>();
+    println!("{top_three}");
 
     Ok(())
 }
