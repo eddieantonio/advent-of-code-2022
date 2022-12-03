@@ -14,25 +14,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let calories_per_elf = elves.into_iter().map(|pack| pack.into_iter().sum::<i32>());
-    let mut index_of_maximum = 0;
-    let mut value_of_maximum = None;
-    for (i, amount) in calories_per_elf.enumerate() {
-        value_of_maximum = match value_of_maximum {
-            None => Some(amount),
-            Some(previous) => {
-                if amount > previous {
-                    index_of_maximum = i;
-                    Some(amount)
-                } else {
-                    Some(previous)
-                }
-            }
-        }
-    }
+    let Some((index, calories)) = elves
+        .into_iter()
+        .map(|pack| pack.into_iter().sum::<i32>())
+        .enumerate()
+        .max_by_key(|(_, elf)| *elf) else {
+            panic!("should not happen");
+        };
 
-    let the_elf = index_of_maximum + 1;
-    println!("{the_elf}");
+    let the_elf = index + 1;
+    println!("Elf {the_elf} is carrying {calories} calories.");
 
     Ok(())
 }
