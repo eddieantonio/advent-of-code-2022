@@ -45,11 +45,13 @@ impl Item {
 
 impl Rucksack {
     fn left_half(&self) -> Items {
-        Items(self.both_contents[0..self.half_len()].chars())
+        self.both_contents[0..self.half_len()].chars().into()
     }
 
     fn right_half(&self) -> Items {
-        Items(self.both_contents[self.half_len()..self.len()].chars())
+        self.both_contents[self.half_len()..self.len()]
+            .chars()
+            .into()
     }
 
     fn len(&self) -> usize {
@@ -75,5 +77,11 @@ impl From<&str> for Rucksack {
         Rucksack {
             both_contents: s.to_owned(),
         }
+    }
+}
+
+impl<'a> From<Chars<'a>> for Items<'a> {
+    fn from(iterator: Chars<'a>) -> Items<'a> {
+        Items(iterator)
     }
 }
