@@ -10,8 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             elves.push(vec![]);
         } else {
             let value: i32 = line.parse()?;
-            let last_idx = elves.len() - 1;
-            elves[last_idx].push(value);
+            elves.last().push(value);
         }
     }
 
@@ -36,4 +35,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{the_elf}");
 
     Ok(())
+}
+
+trait Last<T> {
+    fn last(&mut self) -> &mut T;
+}
+
+impl<T> Last<T> for Vec<T> {
+    fn last(&mut self) -> &mut T {
+        let idx = self.len() - 1;
+        &mut self[idx]
+    }
 }
