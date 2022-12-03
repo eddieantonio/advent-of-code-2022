@@ -1,4 +1,4 @@
-use inpt::{inpt, Inpt};
+use inpt::Inpt;
 
 #[derive(Inpt, Debug, Clone, Copy)]
 enum Move {
@@ -59,9 +59,8 @@ impl Round {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rounds = inpt::<Vec<Round>>("A Y B X C Z")?;
-
+#[inpt::main]
+fn main(rounds: Vec<Round>) -> Result<(), Box<dyn std::error::Error>> {
     let (_, player) = rounds
         .into_iter()
         .map(|round| round.play())
