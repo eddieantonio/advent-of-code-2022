@@ -11,13 +11,13 @@ enum Move {
 }
 
 #[derive(Inpt, Debug, Clone, Copy)]
-enum RequiredPlayerResult {
+enum PlayerMust {
     #[inpt(regex = "X")]
-    PlayerMustLose,
+    Lose,
     #[inpt(regex = "Y")]
-    PlayerMustDraw,
+    Draw,
     #[inpt(regex = "Z")]
-    PlayerMustWin,
+    Win,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -40,14 +40,13 @@ impl Move {
 #[derive(Inpt, Debug, Copy, Clone)]
 struct Round {
     opponent: Move,
-    requirement: RequiredPlayerResult,
+    requirement: PlayerMust,
 }
 
 impl Round {
     fn play(self) -> (i32, i32) {
         use GameResult::*;
         use Move::*;
-        use RequiredPlayerResult::*;
 
         let Round {
             opponent,
@@ -55,13 +54,13 @@ impl Round {
         } = self;
 
         let player = match (opponent, requirement) {
-            (m, PlayerMustDraw) => m,
-            (Rock, PlayerMustLose) => Scissors,
-            (Rock, PlayerMustWin) => Paper,
-            (Paper, PlayerMustLose) => Rock,
-            (Paper, PlayerMustWin) => Scissors,
-            (Scissors, PlayerMustLose) => Paper,
-            (Scissors, PlayerMustWin) => Rock,
+            (m, PlayerMust::Draw) => m,
+            (Rock, PlayerMust::Lose) => Scissors,
+            (Rock, PlayerMust::Win) => Paper,
+            (Paper, PlayerMust::Lose) => Rock,
+            (Paper, PlayerMust::Win) => Scissors,
+            (Scissors, PlayerMust::Lose) => Paper,
+            (Scissors, PlayerMust::Win) => Rock,
         };
 
         match shoot(opponent, player) {
