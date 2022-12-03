@@ -34,9 +34,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn grand_intersection<'a, T: Iterator<Item = Items<'a>>>(collections: T) -> HashSet<Item> {
+fn grand_intersection<T, U, It>(collections: It) -> HashSet<T>
+where
+    T: Copy + Eq + std::hash::Hash,
+    U: Iterator<Item = T>,
+    It: Iterator<Item = U>,
+{
     collections
-        .map(|items| items.collect::<HashSet<Item>>())
+        .map(|items| items.collect::<HashSet<_>>())
         .reduce(|a, b| a.intersection(&b).copied().collect())
         .unwrap()
 }
