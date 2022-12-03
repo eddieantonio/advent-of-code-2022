@@ -14,18 +14,25 @@ struct Items<'a>(Chars<'a>);
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stdin = io::stdin();
 
-    let answer = stdin
+    let all_rucksacks: Vec<Rucksack> = stdin
         .lock()
         .lines()
-        .map(|line| {
-            let rucksack: Rucksack = line.unwrap().trim().into();
-            let left_half: HashSet<_> = rucksack.left_half().collect();
+        .map(|line| line.unwrap().trim().into())
+        .collect();
 
-            let needle = rucksack
-                .right_half()
-                .find_map(|item| left_half.contains(&item).then_some(item));
+    let answer = all_rucksacks[..]
+        .chunks(3)
+        .map(|group| {
+            let (a, b, c) = (&group[0], &group[1], &group[2]);
+            let a: HashSet<_> = a.items().collect();
+            let b: HashSet<_> = b.items().collect();
+            let c: HashSet<_> = c.items().collect();
 
-            needle.unwrap().value()
+            let all: HashSet<_> = a.intersection(&b).copied().collect();
+            let all: HashSet<_> = all.intersection(&c).collect();
+            assert_eq!(1, all.len());
+
+            all.into_iter().next().unwrap().value()
         })
         .sum::<i32>();
 
@@ -44,23 +51,8 @@ impl Item {
 }
 
 impl Rucksack {
-    fn left_half(&self) -> Items {
-        self.both_contents[0..self.half_len()].chars().into()
-    }
-
-    fn right_half(&self) -> Items {
-        self.both_contents[self.half_len()..self.len()]
-            .chars()
-            .into()
-    }
-
-    fn len(&self) -> usize {
-        self.both_contents.len()
-    }
-
-    fn half_len(&self) -> usize {
-        assert_eq!(0, self.len() % 2);
-        self.len() / 2
+    fn items(&self) -> Items<'_> {
+        self.both_contents.chars().into()
     }
 }
 
