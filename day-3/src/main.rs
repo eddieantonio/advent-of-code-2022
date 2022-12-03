@@ -21,13 +21,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let rucksack: Rucksack = line.unwrap().trim().into();
             let left_half: HashSet<_> = rucksack.left_half().collect();
 
-            let mut needle = None;
-            for item in rucksack.right_half() {
-                if left_half.contains(&item) {
-                    needle = Some(item);
-                    break;
-                }
-            }
+            let needle = rucksack
+                .right_half()
+                .find_map(|item| left_half.contains(&item).then_some(item));
 
             needle.unwrap().value()
         })
