@@ -71,10 +71,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect();
 
     for m in moves.into_iter() {
-        for _ in 0..m.quantity {
-            let c = stacks[m.source].pop().unwrap();
-            stacks[m.destination].push(c);
-        }
+        let end = stacks[m.source].len();
+        let start = ((end as isize) - (m.quantity as isize)) as usize;
+
+        let tail = stacks[m.source][start..end].to_vec();
+        stacks[m.destination].extend_from_slice(&tail);
+        stacks[m.source].resize_with(start, || panic!());
     }
 
     let message: String = stacks
