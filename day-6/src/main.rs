@@ -10,8 +10,11 @@ fn main() {
     println!("{answer}");
 }
 
-fn start_packet(s: &str) -> Option<usize> {
-    const PREFIX_SIZE: usize = 4;
+pub fn start_packet(s: &str) -> Option<usize> {
+    start_distinct::<4>(s)
+}
+
+fn start_distinct<const PREFIX_SIZE: usize>(s: &str) -> Option<usize> {
     let mut buffer = ['\0'; PREFIX_SIZE];
 
     for (i, c) in s.chars().enumerate() {
