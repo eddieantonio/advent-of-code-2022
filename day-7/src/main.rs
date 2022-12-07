@@ -24,13 +24,21 @@ fn main() {
         .collect();
 
     lines.pop_front();
-    let Calculation(_, _, dirs) = calculate_size(lines, vec![]);
-    let total_size = dirs
+    let Calculation(_, root_size, mut dirs) = calculate_size(lines, vec![]);
+    let space_available = 70000000;
+    let space_required = 30000000;
+
+    let unused_space = space_available - root_size;
+    assert!(unused_space < space_required);
+
+    dirs.sort_by_key(|DirectorySize(_, size)| *size);
+
+    let DirectorySize(name, size) = dirs
         .into_iter()
-        .map(|DirectorySize(_, size)| size)
-        .filter(|&size| size < 100000)
-        .sum::<usize>();
-    println!("{total_size}");
+        .find(|DirectorySize(_, size)| size + unused_space > space_required)
+        .unwrap();
+
+    println!("{name}: {size}");
 }
 
 struct DirectorySize(String, usize);
@@ -169,16 +177,32 @@ mod test {
             .collect();
 
         lines.pop_front();
-        let Calculation(lines, size, dirs) = calculate_size(lines, vec![]);
+        let Calculation(lines, size, mut dirs) = calculate_size(lines, vec![]);
         assert_eq!(0, lines.len());
         assert_eq!(48381165, size);
         assert_eq!(3, dirs.len());
 
+        // part 1
         let total_size = dirs
-            .into_iter()
+            .iter()
             .map(|DirectorySize(_, size)| size)
-            .filter(|&size| size < 100000)
+            .filter(|&&size| size < 100000)
             .sum::<usize>();
         assert_eq!(95437, total_size);
+
+        // part 2
+        let space_available = 70000000;
+        let space_required = 30000000;
+        let unused_space = space_available - size;
+        assert!(unused_space < space_required);
+
+        dirs.sort_by_key(|DirectorySize(_, size)| *size);
+
+        let DirectorySize(name, size) = dirs
+            .into_iter()
+            .find(|DirectorySize(_, size)| size + unused_space > space_required)
+            .unwrap();
+        assert_eq!(24933642, size);
+        assert_eq!("d", &name);
     }
 }
