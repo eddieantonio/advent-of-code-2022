@@ -16,19 +16,27 @@ enum Line {
 
 fn main() {
     let stdin = io::stdin();
-    let lines: Vec<_> = stdin
+    let mut lines: VecDeque<_> = stdin
         .lock()
         .lines()
         .filter_map(Result::ok)
         .map(|line| inpt::<Line>(line.trim()).unwrap())
         .collect();
 
-    println!("{lines:?}");
+    lines.pop_front();
+    let Calculation(_, _, dirs) = calculate_size(lines, vec![]);
+    let total_size = dirs
+        .into_iter()
+        .map(|DirectorySize(_, size)| size)
+        .filter(|&size| size < 100000)
+        .sum::<usize>();
+    println!("{total_size}");
 }
 
-struct Calculation(VecDeque<Line>, usize);
+struct DirectorySize(String, usize);
+struct Calculation(VecDeque<Line>, usize, Vec<DirectorySize>);
 
-fn calculate_size(mut lines: VecDeque<Line>) -> Calculation {
+fn calculate_size(mut lines: VecDeque<Line>, mut dirs: Vec<DirectorySize>) -> Calculation {
     let Some(Line::Ls) = lines.pop_front() else {
         panic!("Did not see ls");
     };
@@ -38,16 +46,21 @@ fn calculate_size(mut lines: VecDeque<Line>) -> Calculation {
         let line = lines.pop_front();
         match line {
             Some(Line::Cd(dir)) if &dir == ".." => {
-                return Calculation(lines, current_size);
+                return Calculation(lines, current_size, dirs);
             }
             Some(Line::File(size)) => current_size += size,
             Some(Line::Directory(_)) => {
                 // Don't need to do anything for a directory
             }
             Some(Line::Cd(name)) => {
-                let Calculation(new_lines, size) = calculate_size(lines);
+                let Calculation(new_lines, size, new_dirs) = calculate_size(lines, dirs);
                 lines = new_lines;
+                dirs = new_dirs;
                 current_size += size;
+                dirs.push(DirectorySize(name, size));
+            }
+            None => {
+                return Calculation(lines, current_size, dirs);
             }
             _ => unimplemented!("{line:?}, {lines:?}"),
         }
@@ -89,9 +102,10 @@ mod test {
             .map(|line| inpt::<Line>(line).unwrap())
             .collect();
 
-        let Calculation(lines, size) = calculate_size(lines);
+        let Calculation(lines, size, dirs) = calculate_size(lines, vec![]);
         assert_eq!(584, size);
         assert_eq!(0, lines.len());
+        assert_eq!(0, dirs.len());
     }
 
     #[test]
@@ -113,13 +127,17 @@ mod test {
             .map(|line| inpt::<Line>(line).unwrap())
             .collect();
 
-        let Calculation(lines, size) = calculate_size(lines);
+        let Calculation(lines, size, mut dirs) = calculate_size(lines, vec![]);
         assert_eq!(94853, size);
         assert_eq!(0, lines.len());
+        assert_eq!(1, dirs.len());
+        let DirectorySize(name, e_size) = dirs.pop().unwrap();
+        assert_eq!("e", &name);
+        assert_eq!(584, e_size);
     }
 
     #[test]
-    fn test_herp() {
+    fn test_given_input() {
         let lines = vec![
             "$ cd /",
             "$ ls",
@@ -145,9 +163,22 @@ mod test {
             "5626152 d.ext",
             "7214296 k",
         ];
-        let lines: Vec<_> = lines
+        let mut lines: VecDeque<_> = lines
             .into_iter()
             .map(|line| inpt::<Line>(line).unwrap())
             .collect();
+
+        lines.pop_front();
+        let Calculation(lines, size, dirs) = calculate_size(lines, vec![]);
+        assert_eq!(0, lines.len());
+        assert_eq!(48381165, size);
+        assert_eq!(3, dirs.len());
+
+        let total_size = dirs
+            .into_iter()
+            .map(|DirectorySize(_, size)| size)
+            .filter(|&size| size < 100000)
+            .sum::<usize>();
+        assert_eq!(95437, total_size);
     }
 }
