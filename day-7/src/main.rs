@@ -25,6 +25,14 @@ fn main() {
 
     lines.pop_front();
     let Calculation(_, root_size, mut dirs) = calculate_size(lines, vec![]);
+
+    let total_size = dirs
+        .iter()
+        .map(|DirectorySize(_, size)| *size)
+        .filter(|&size| size < 10_000)
+        .sum::<usize>();
+    println!("{total_size}");
+
     let space_available = 70000000;
     let space_required = 30000000;
 

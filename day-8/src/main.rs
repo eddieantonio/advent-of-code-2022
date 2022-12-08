@@ -10,7 +10,6 @@ enum Visibility {
 fn main() {
     use Visibility::*;
     let trees: Vec<Vec<u32>> = read_grid();
-    println!("{trees:?}");
 
     let width = trees[0].len();
     let height = trees.len();
@@ -61,13 +60,16 @@ fn main() {
     println!("{trees_visible}");
 }
 
+type Coords = (usize, usize);
+
+fn above((x, y): Coords) -> impl Iterator<Item = Coords> {
+    std::iter::repeat(x).zip(0..y)
+}
+
 fn check_above(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
-    for y2 in 0..y {
-        if grid[y2][x] >= grid[y][x] {
-            return false;
-        }
-    }
-    true
+    above((x, y))
+        .find(|(x2, y2)| grid[*y2][*x2] >= grid[y][x])
+        .is_none()
 }
 
 fn check_below(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
