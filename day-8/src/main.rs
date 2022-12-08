@@ -34,7 +34,7 @@ fn main() {
         for x in 1..width - 1 {
             // considering visibility for grid[x,y]
             let mut visible = false;
-            visible |= check_above(x, y, &trees.0);
+            visible |= check_above(x, y, &trees);
             visible |= check_below(x, y, &trees.0);
             visible |= check_right(x, y, &trees.0);
             visible |= check_left(x, y, &trees.0);
@@ -68,8 +68,8 @@ fn above((x, y): Coords) -> impl Iterator<Item = Coords> {
     std::iter::repeat(x).zip(0..y)
 }
 
-fn check_above(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
-    !above((x, y)).any(|(x2, y2)| grid[y2][x2] >= grid[y][x])
+fn check_above(x: usize, y: usize, grid: &Grid) -> bool {
+    !above((x, y)).any(|(x2, y2)| grid[(x2, y2)] >= grid[(x, y)])
 }
 
 fn check_below(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
