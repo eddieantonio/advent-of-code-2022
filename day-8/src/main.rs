@@ -35,9 +35,9 @@ fn main() {
             // considering visibility for grid[x,y]
             let mut visible = false;
             visible |= check_above(x, y, &trees);
-            visible |= check_below(x, y, &trees.0);
-            visible |= check_right(x, y, &trees.0);
-            visible |= check_left(x, y, &trees.0);
+            visible |= check_below(x, y, &trees);
+            visible |= check_right(x, y, &trees);
+            visible |= check_left(x, y, &trees);
 
             viz[y][x] = if visible { Visible } else { Hidden };
         }
@@ -70,32 +70,22 @@ fn check_above(x: usize, y: usize, grid: &Grid) -> bool {
         .any(|(x2, y2)| grid[(x2, y2)] >= grid[(x, y)])
 }
 
-fn check_below(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
-    for y2 in y + 1..grid.len() {
-        if grid[y2][x] >= grid[y][x] {
-            return false;
-        }
-    }
-    true
+fn check_below(x: usize, y: usize, grid: &Grid) -> bool {
+    !grid
+        .below((x, y))
+        .any(|(x2, y2)| grid[(x2, y2)] >= grid[(x, y)])
 }
 
-fn check_left(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
-    for x2 in 0..x {
-        if grid[y][x2] >= grid[y][x] {
-            return false;
-        }
-    }
-    true
+fn check_left(x: usize, y: usize, grid: &Grid) -> bool {
+    !grid
+        .left((x, y))
+        .any(|(x2, y2)| grid[(x2, y2)] >= grid[(x, y)])
 }
 
-fn check_right(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
-    let width = grid[0].len();
-    for x2 in x + 1..width {
-        if grid[y][x2] >= grid[y][x] {
-            return false;
-        }
-    }
-    true
+fn check_right(x: usize, y: usize, grid: &Grid) -> bool {
+    !grid
+        .right((x, y))
+        .any(|(x2, y2)| grid[(x2, y2)] >= grid[(x, y)])
 }
 
 fn read_grid() -> Grid {
@@ -125,6 +115,18 @@ impl Grid {
 
     fn above(&self, (x, y): Coords) -> impl Iterator<Item = Coords> {
         std::iter::repeat(x).zip(0..y)
+    }
+
+    fn below(&self, (x, y): Coords) -> impl Iterator<Item = Coords> {
+        std::iter::repeat(x).zip(y + 1..self.height())
+    }
+
+    fn left(&self, (x, y): Coords) -> impl Iterator<Item = Coords> {
+        (0..x).zip(std::iter::repeat(y))
+    }
+
+    fn right(&self, (x, y): Coords) -> impl Iterator<Item = Coords> {
+        (x + 1..self.width()).zip(std::iter::repeat(y))
     }
 }
 
