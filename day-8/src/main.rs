@@ -64,12 +64,10 @@ fn main() {
 
 type Coords = (usize, usize);
 
-fn above((x, y): Coords) -> impl Iterator<Item = Coords> {
-    std::iter::repeat(x).zip(0..y)
-}
-
 fn check_above(x: usize, y: usize, grid: &Grid) -> bool {
-    !above((x, y)).any(|(x2, y2)| grid[(x2, y2)] >= grid[(x, y)])
+    !grid
+        .above((x, y))
+        .any(|(x2, y2)| grid[(x2, y2)] >= grid[(x, y)])
 }
 
 fn check_below(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
@@ -123,6 +121,10 @@ impl Grid {
 
     fn height(&self) -> usize {
         self.0.len()
+    }
+
+    fn above(&self, (x, y): Coords) -> impl Iterator<Item = Coords> {
+        std::iter::repeat(x).zip(0..y)
     }
 }
 
