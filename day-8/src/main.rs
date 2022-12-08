@@ -15,7 +15,6 @@ fn main() {
     let width = trees[0].len();
     let height = trees.len();
     let mut viz: Vec<_> = (0..height).map(|_| vec![Unknown; width]).collect();
-    println!("{trees:?}");
 
     // Top and bottom
     for x in 0..width {
@@ -29,6 +28,7 @@ fn main() {
         row[width - 1] = Visible;
     }
 
+    #[allow(clippy::needless_range_loop)] // shut up, 📎
     for y in 1..height - 1 {
         for x in 1..width - 1 {
             // considering visibility for grid[x,y]
@@ -44,7 +44,7 @@ fn main() {
 
     for (x, row) in trees.iter().enumerate() {
         for (y, tree) in row.iter().enumerate() {
-            if matches!(viz[y][x], Visible) {
+            if viz[y][x].is_visible() {
                 print!("| {tree} ");
             } else {
                 print!("|   ");
@@ -52,9 +52,16 @@ fn main() {
         }
         println!("|");
     }
+
+    let trees_visible: usize = viz
+        .iter()
+        .map(|row| row.iter().filter(|tree| tree.is_visible()).count())
+        .sum();
+
+    println!("{trees_visible}");
 }
 
-fn check_above(x: usize, y: usize, grid: &Vec<Vec<u32>>) -> bool {
+fn check_above(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
     for y2 in 0..y {
         if grid[y2][x] >= grid[y][x] {
             return false;
@@ -63,7 +70,7 @@ fn check_above(x: usize, y: usize, grid: &Vec<Vec<u32>>) -> bool {
     true
 }
 
-fn check_below(x: usize, y: usize, grid: &Vec<Vec<u32>>) -> bool {
+fn check_below(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
     for y2 in y + 1..grid.len() {
         if grid[y2][x] >= grid[y][x] {
             return false;
@@ -72,7 +79,7 @@ fn check_below(x: usize, y: usize, grid: &Vec<Vec<u32>>) -> bool {
     true
 }
 
-fn check_left(x: usize, y: usize, grid: &Vec<Vec<u32>>) -> bool {
+fn check_left(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
     for x2 in 0..x {
         if grid[y][x2] >= grid[y][x] {
             return false;
@@ -81,7 +88,7 @@ fn check_left(x: usize, y: usize, grid: &Vec<Vec<u32>>) -> bool {
     true
 }
 
-fn check_right(x: usize, y: usize, grid: &Vec<Vec<u32>>) -> bool {
+fn check_right(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
     let width = grid[0].len();
     for x2 in x + 1..width {
         if grid[y][x2] >= grid[y][x] {
@@ -105,9 +112,8 @@ fn read_grid() -> Vec<Vec<u32>> {
         .collect()
 }
 
-#[cfg(test)]
-mod test {
-
-    #[test]
-    fn test_input() {}
+impl Visibility {
+    fn is_visible(self) -> bool {
+        matches!(self, Visibility::Visible)
+    }
 }
