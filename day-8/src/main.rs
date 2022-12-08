@@ -7,88 +7,112 @@ type Coords = (usize, usize);
 #[derive(Debug)]
 struct Grid(Vec<Vec<u32>>);
 
-#[derive(Debug, Clone, Copy)]
-enum Visibility {
-    Unknown,
-    Visible,
-    Hidden,
-}
-
 fn main() {
-    use Visibility::*;
     let trees = read_grid();
 
     let width = trees.width();
     let height = trees.height();
-    let mut viz: Vec<_> = (0..height).map(|_| vec![Unknown; width]).collect();
 
-    // Top and bottom
-    for x in 0..width {
-        viz[0][x] = Visible;
-        viz[height - 1][x] = Visible;
-    }
+    let best_score = (1..height - 1)
+        .flat_map(|y| {
+            let trees = &trees;
+            (1..width - 1).map(move |x| {
+                let mut scenic_score = 1;
+                scenic_score *= score_above(x, y, trees);
+                scenic_score *= score_below(x, y, trees);
+                scenic_score *= score_left(x, y, trees);
+                scenic_score *= score_right(x, y, trees);
+                scenic_score
+            })
+        })
+        .max()
+        .unwrap();
 
-    // Left and right
-    for row in viz.iter_mut() {
-        row[0] = Visible;
-        row[width - 1] = Visible;
-    }
+    println!("{best_score}");
+}
 
-    #[allow(clippy::needless_range_loop)] // shut up, 📎
-    for y in 1..height - 1 {
-        for x in 1..width - 1 {
-            // considering visibility for grid[x,y]
-            let mut visible = false;
-            visible |= check_above(x, y, &trees);
-            visible |= check_below(x, y, &trees);
-            visible |= check_right(x, y, &trees);
-            visible |= check_left(x, y, &trees);
-
-            viz[y][x] = if visible { Visible } else { Hidden };
-        }
-    }
-
-    for (x, row) in trees.0.iter().enumerate() {
-        for (y, tree) in row.iter().enumerate() {
-            if viz[y][x].is_visible() {
-                print!("| {tree} ");
-            } else {
-                print!("|   ");
+fn score_above(x: usize, y: usize, grid: &Grid) -> usize {
+    use std::cmp::Ordering;
+    let mut score = 0;
+    for (x2, y2) in grid.above((x, y)) {
+        match grid[(x, y)].cmp(&grid[(x2, y2)]) {
+            Ordering::Greater => {
+                score += 1;
+            }
+            Ordering::Equal => {
+                score += 1;
+                break;
+            }
+            Ordering::Less => {
+                score += 1;
+                break;
             }
         }
-        println!("|");
     }
-
-    let trees_visible: usize = viz
-        .iter()
-        .map(|row| row.iter().filter(|tree| tree.is_visible()).count())
-        .sum();
-
-    println!("{trees_visible}");
+    score
 }
 
-fn check_above(x: usize, y: usize, grid: &Grid) -> bool {
-    !grid
-        .above((x, y))
-        .any(|(x2, y2)| grid[(x2, y2)] >= grid[(x, y)])
+fn score_below(x: usize, y: usize, grid: &Grid) -> usize {
+    use std::cmp::Ordering;
+    let mut score = 0;
+    for (x2, y2) in grid.below((x, y)) {
+        match grid[(x, y)].cmp(&grid[(x2, y2)]) {
+            Ordering::Greater => {
+                score += 1;
+            }
+            Ordering::Equal => {
+                score += 1;
+                break;
+            }
+            Ordering::Less => {
+                score += 1;
+                break;
+            }
+        }
+    }
+    score
 }
 
-fn check_below(x: usize, y: usize, grid: &Grid) -> bool {
-    !grid
-        .below((x, y))
-        .any(|(x2, y2)| grid[(x2, y2)] >= grid[(x, y)])
+fn score_left(x: usize, y: usize, grid: &Grid) -> usize {
+    use std::cmp::Ordering;
+    let mut score = 0;
+    for (x2, y2) in grid.left((x, y)) {
+        match grid[(x, y)].cmp(&grid[(x2, y2)]) {
+            Ordering::Greater => {
+                score += 1;
+            }
+            Ordering::Equal => {
+                score += 1;
+                break;
+            }
+            Ordering::Less => {
+                score += 1;
+                break;
+            }
+        }
+    }
+    score
 }
 
-fn check_left(x: usize, y: usize, grid: &Grid) -> bool {
-    !grid
-        .left((x, y))
-        .any(|(x2, y2)| grid[(x2, y2)] >= grid[(x, y)])
-}
-
-fn check_right(x: usize, y: usize, grid: &Grid) -> bool {
-    !grid
-        .right((x, y))
-        .any(|(x2, y2)| grid[(x2, y2)] >= grid[(x, y)])
+fn score_right(x: usize, y: usize, grid: &Grid) -> usize {
+    use std::cmp::Ordering;
+    let mut score = 0;
+    for (x2, y2) in grid.right((x, y)) {
+        match grid[(x, y)].cmp(&grid[(x2, y2)]) {
+            Ordering::Greater => {
+                score += 1;
+            }
+            Ordering::Equal => {
+                score += 1;
+                break;
+            }
+            Ordering::Less => {
+                score += 1;
+                break;
+            }
+        }
+    }
+    score
 }
 
 fn read_grid() -> Grid {
@@ -117,7 +141,7 @@ impl Grid {
     }
 
     fn above(&self, (x, y): Coords) -> impl Iterator<Item = Coords> {
-        repeat(x).zip(0..y)
+        repeat(x).zip((0..y).rev())
     }
 
     fn below(&self, (x, y): Coords) -> impl Iterator<Item = Coords> {
@@ -125,7 +149,7 @@ impl Grid {
     }
 
     fn left(&self, (x, y): Coords) -> impl Iterator<Item = Coords> {
-        (0..x).zip(repeat(y))
+        (0..x).rev().zip(repeat(y))
     }
 
     fn right(&self, (x, y): Coords) -> impl Iterator<Item = Coords> {
@@ -137,11 +161,5 @@ impl Index<Coords> for Grid {
     type Output = u32;
     fn index(&self, (x, y): Coords) -> &Self::Output {
         &self.0[y][x]
-    }
-}
-
-impl Visibility {
-    fn is_visible(self) -> bool {
-        matches!(self, Visibility::Visible)
     }
 }
