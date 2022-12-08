@@ -7,6 +7,19 @@ type Coords = (usize, usize);
 #[derive(Debug)]
 struct Grid(Vec<Vec<u32>>);
 
+macro_rules! score {
+    ($dir: tt, $grid: ident, $x: ident, $y: ident) => {{
+        let mut score = 0;
+        for (x2, y2) in $grid.$dir(($x, $y)) {
+            score += 1;
+            if $grid[($x, $y)] <= $grid[(x2, y2)] {
+                break;
+            }
+        }
+        score
+    }};
+}
+
 fn main() {
     let trees = read_grid();
 
@@ -15,13 +28,15 @@ fn main() {
 
     let best_score = (1..height - 1)
         .flat_map(|y| {
+            // borrow `trees` here so that the closure doesn't try to move it...
+            // otherwise, we'd have to borrow `y`, and that's just silly.
             let trees = &trees;
             (1..width - 1).map(move |x| {
                 let mut scenic_score = 1;
-                scenic_score *= score_above(x, y, trees);
-                scenic_score *= score_below(x, y, trees);
-                scenic_score *= score_left(x, y, trees);
-                scenic_score *= score_right(x, y, trees);
+                scenic_score *= score!(above, trees, x, y);
+                scenic_score *= score!(below, trees, x, y);
+                scenic_score *= score!(left, trees, x, y);
+                scenic_score *= score!(right, trees, x, y);
                 scenic_score
             })
         })
@@ -29,90 +44,6 @@ fn main() {
         .unwrap();
 
     println!("{best_score}");
-}
-
-fn score_above(x: usize, y: usize, grid: &Grid) -> usize {
-    use std::cmp::Ordering;
-    let mut score = 0;
-    for (x2, y2) in grid.above((x, y)) {
-        match grid[(x, y)].cmp(&grid[(x2, y2)]) {
-            Ordering::Greater => {
-                score += 1;
-            }
-            Ordering::Equal => {
-                score += 1;
-                break;
-            }
-            Ordering::Less => {
-                score += 1;
-                break;
-            }
-        }
-    }
-    score
-}
-
-fn score_below(x: usize, y: usize, grid: &Grid) -> usize {
-    use std::cmp::Ordering;
-    let mut score = 0;
-    for (x2, y2) in grid.below((x, y)) {
-        match grid[(x, y)].cmp(&grid[(x2, y2)]) {
-            Ordering::Greater => {
-                score += 1;
-            }
-            Ordering::Equal => {
-                score += 1;
-                break;
-            }
-            Ordering::Less => {
-                score += 1;
-                break;
-            }
-        }
-    }
-    score
-}
-
-fn score_left(x: usize, y: usize, grid: &Grid) -> usize {
-    use std::cmp::Ordering;
-    let mut score = 0;
-    for (x2, y2) in grid.left((x, y)) {
-        match grid[(x, y)].cmp(&grid[(x2, y2)]) {
-            Ordering::Greater => {
-                score += 1;
-            }
-            Ordering::Equal => {
-                score += 1;
-                break;
-            }
-            Ordering::Less => {
-                score += 1;
-                break;
-            }
-        }
-    }
-    score
-}
-
-fn score_right(x: usize, y: usize, grid: &Grid) -> usize {
-    use std::cmp::Ordering;
-    let mut score = 0;
-    for (x2, y2) in grid.right((x, y)) {
-        match grid[(x, y)].cmp(&grid[(x2, y2)]) {
-            Ordering::Greater => {
-                score += 1;
-            }
-            Ordering::Equal => {
-                score += 1;
-                break;
-            }
-            Ordering::Less => {
-                score += 1;
-                break;
-            }
-        }
-    }
-    score
 }
 
 fn read_grid() -> Grid {
