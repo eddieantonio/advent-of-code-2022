@@ -7,12 +7,14 @@ enum Visibility {
     Hidden,
 }
 
+struct Grid(Vec<Vec<u32>>);
+
 fn main() {
     use Visibility::*;
-    let trees: Vec<Vec<u32>> = read_grid();
+    let trees = read_grid();
 
-    let width = trees[0].len();
-    let height = trees.len();
+    let width = trees.width();
+    let height = trees.height();
     let mut viz: Vec<_> = (0..height).map(|_| vec![Unknown; width]).collect();
 
     // Top and bottom
@@ -32,16 +34,16 @@ fn main() {
         for x in 1..width - 1 {
             // considering visibility for grid[x,y]
             let mut visible = false;
-            visible |= check_above(x, y, &trees);
-            visible |= check_below(x, y, &trees);
-            visible |= check_right(x, y, &trees);
-            visible |= check_left(x, y, &trees);
+            visible |= check_above(x, y, &trees.0);
+            visible |= check_below(x, y, &trees.0);
+            visible |= check_right(x, y, &trees.0);
+            visible |= check_left(x, y, &trees.0);
 
             viz[y][x] = if visible { Visible } else { Hidden };
         }
     }
 
-    for (x, row) in trees.iter().enumerate() {
+    for (x, row) in trees.0.iter().enumerate() {
         for (y, tree) in row.iter().enumerate() {
             if viz[y][x].is_visible() {
                 print!("| {tree} ");
@@ -98,18 +100,37 @@ fn check_right(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
     true
 }
 
-fn read_grid() -> Vec<Vec<u32>> {
+fn read_grid() -> Grid {
     let stdin = io::stdin();
 
-    stdin
-        .lock()
-        .lines()
-        .map(|line| {
-            let line = line.expect("line");
-            let line = line.trim();
-            line.chars().map(|c| c.to_digit(10).unwrap()).collect()
-        })
-        .collect()
+    Grid(
+        stdin
+            .lock()
+            .lines()
+            .map(|line| {
+                let line = line.expect("line");
+                let line = line.trim();
+                line.chars().map(|c| c.to_digit(10).unwrap()).collect()
+            })
+            .collect(),
+    )
+}
+
+impl Grid {
+    fn width(&self) -> usize {
+        self.0[0].len()
+    }
+
+    fn height(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl std::ops::Index<Coords> for Grid {
+    type Output = u32;
+    fn index(&self, (x, y): Coords) -> &Self::Output {
+        &self.0[y][x]
+    }
 }
 
 impl Visibility {
