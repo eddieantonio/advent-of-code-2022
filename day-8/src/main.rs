@@ -1,4 +1,11 @@
 use std::io::{self, BufRead};
+use std::iter::repeat;
+use std::ops::Index;
+
+type Coords = (usize, usize);
+
+#[derive(Debug)]
+struct Grid(Vec<Vec<u32>>);
 
 #[derive(Debug, Clone, Copy)]
 enum Visibility {
@@ -6,8 +13,6 @@ enum Visibility {
     Visible,
     Hidden,
 }
-
-struct Grid(Vec<Vec<u32>>);
 
 fn main() {
     use Visibility::*;
@@ -62,8 +67,6 @@ fn main() {
     println!("{trees_visible}");
 }
 
-type Coords = (usize, usize);
-
 fn check_above(x: usize, y: usize, grid: &Grid) -> bool {
     !grid
         .above((x, y))
@@ -114,23 +117,23 @@ impl Grid {
     }
 
     fn above(&self, (x, y): Coords) -> impl Iterator<Item = Coords> {
-        std::iter::repeat(x).zip(0..y)
+        repeat(x).zip(0..y)
     }
 
     fn below(&self, (x, y): Coords) -> impl Iterator<Item = Coords> {
-        std::iter::repeat(x).zip(y + 1..self.height())
+        repeat(x).zip(y + 1..self.height())
     }
 
     fn left(&self, (x, y): Coords) -> impl Iterator<Item = Coords> {
-        (0..x).zip(std::iter::repeat(y))
+        (0..x).zip(repeat(y))
     }
 
     fn right(&self, (x, y): Coords) -> impl Iterator<Item = Coords> {
-        (x + 1..self.width()).zip(std::iter::repeat(y))
+        (x + 1..self.width()).zip(repeat(y))
     }
 }
 
-impl std::ops::Index<Coords> for Grid {
+impl Index<Coords> for Grid {
     type Output = u32;
     fn index(&self, (x, y): Coords) -> &Self::Output {
         &self.0[y][x]
