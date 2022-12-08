@@ -67,9 +67,7 @@ fn above((x, y): Coords) -> impl Iterator<Item = Coords> {
 }
 
 fn check_above(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
-    above((x, y))
-        .find(|(x2, y2)| grid[*y2][*x2] >= grid[y][x])
-        .is_none()
+    !above((x, y)).any(|(x2, y2)| grid[y2][x2] >= grid[y][x])
 }
 
 fn check_below(x: usize, y: usize, grid: &[Vec<u32>]) -> bool {
