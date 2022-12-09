@@ -26,28 +26,28 @@ struct World {
 #[inpt::main]
 fn main(head_movement: Vec<Movement>) {
     println!("{head_movement:?}");
-    let world = World::from_bounds(&head_movement);
-    world.print();
-}
+    let mut world = World::from_bounds(&head_movement);
 
-impl World {
-    fn print(&self) {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                if (x, y) == self.head {
-                    print!("H");
-                } else if (x, y) == self.tail {
-                    print!("T");
-                } else if (x, y) == self.start {
-                    print!("s");
-                } else {
-                    print!(".");
-                }
-            }
+    println!("== Initial State ==");
+    println!();
+    world.print();
+    println!();
+
+    for m in head_movement {
+        println!("== {m:?} == ");
+        println!();
+        for _ in 0..m.steps() {
+            world.move_head_once(m);
+            world.print();
+            println!();
+            world.move_tail_once();
+            world.print();
             println!();
         }
     }
+}
 
+impl World {
     fn from_bounds(head_movement: &[Movement]) -> Self {
         use Movement::*;
 
@@ -100,6 +100,54 @@ impl World {
             start,
             head: start,
             tail: start,
+        }
+    }
+
+    fn print(&self) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if (x, y) == self.head {
+                    print!("H");
+                } else if (x, y) == self.tail {
+                    print!("T");
+                } else if (x, y) == self.start {
+                    print!("s");
+                } else {
+                    print!(".");
+                }
+            }
+            println!();
+        }
+    }
+
+    fn move_head_once(&mut self, m: Movement) {
+        let (x, y) = self.head;
+        use Movement::*;
+        let new_pos = match m {
+            Right(_) => (x + 1, y),
+            Up(_) => (x, y - 1),
+            Down(_) => (x, y + 1),
+            Left(_) => (x - 1, y),
+        };
+        let (x, y) = new_pos;
+        assert!(x >= 0);
+        assert!(x < self.width);
+        assert!(y >= 0);
+        assert!(y < self.height);
+        self.head = new_pos;
+    }
+
+    fn move_tail_once(&mut self) {}
+}
+
+impl Movement {
+    fn steps(self) -> i32 {
+        use Movement::*;
+        match self {
+            Right(s) => s,
+            Up(s) => s,
+            Down(s) => s,
+            Left(s) => s,
         }
     }
 }
