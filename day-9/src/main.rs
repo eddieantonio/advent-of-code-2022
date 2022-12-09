@@ -2,6 +2,8 @@ use inpt::{self, Inpt};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 
+const N_KNOTS: usize = 10;
+
 type Coords = (i32, i32);
 
 #[derive(Debug)]
@@ -92,7 +94,7 @@ impl World {
         let width = max_width - min_width;
         let height = max_height - min_height;
         let start = (0 - min_width, 0 - min_height);
-        let knots: Vec<_> = (0..10).map(|_| start).collect();
+        let knots: Vec<_> = (0..N_KNOTS).map(|_| start).collect();
 
         World {
             width,
@@ -108,7 +110,7 @@ impl World {
     }
 
     fn tail(&self) -> Coords {
-        self.knots[9]
+        self.knots[N_KNOTS - 1]
     }
 
     fn set_head_position(&mut self, new_position: Coords) {
@@ -133,14 +135,14 @@ impl World {
     }
 
     fn move_knots_once(&mut self) {
-        for knot in 1..10 {
+        for knot in 1..N_KNOTS {
             self.move_knot_once(knot);
         }
     }
 
     fn move_knot_once(&mut self, which: usize) {
         assert!(which >= 1);
-        assert!(which < 10);
+        assert!(which < N_KNOTS);
         let (x, y) = self.knots[which];
         let (other_x, other_y) = self.knots[which - 1];
         let dx = x - other_x;
@@ -154,7 +156,7 @@ impl World {
         let x = match dx.cmp(&0) {
             // this knot is to the right; move left
             Ordering::Greater => x - 1,
-            // this know is to the left; move right
+            // this knot is to the left; move right
             Ordering::Less => x + 1,
             Ordering::Equal => x,
         };
@@ -176,13 +178,7 @@ impl World {
             for x in 0..self.width {
                 if (x, y) == self.head() {
                     print!("H");
-                    continue;
-                } else if let Some((i, _)) = self
-                    .knots
-                    .iter()
-                    .enumerate()
-                    .find(|&(_, knot)| (x, y) == *knot)
-                {
+                } else if let Some(i) = self.find_knot((x, y)) {
                     print!("{i}");
                 } else if (x, y) == self.start {
                     print!("s");
@@ -192,6 +188,15 @@ impl World {
             }
             println!();
         }
+    }
+
+    #[cfg(debug_assertions)]
+    fn find_knot(&self, (x, y): Coords) -> Option<usize> {
+        self.knots
+            .iter()
+            .enumerate()
+            .find(|&(_, knot)| (x, y) == *knot)
+            .map(|(i, _)| i)
     }
 
     #[cfg(debug_assertions)]
