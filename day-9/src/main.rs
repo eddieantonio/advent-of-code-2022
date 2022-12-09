@@ -2,6 +2,17 @@ use inpt::{self, Inpt};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 
+type Coords = (i32, i32);
+
+#[derive(Debug)]
+pub struct World {
+    width: i32,
+    height: i32,
+    knots: Vec<Coords>,
+    #[cfg(debug_assertions)]
+    start: Coords,
+}
+
 #[derive(Inpt, Debug, Clone, Copy)]
 #[inpt(regex = r"(\w+) (\d+)")]
 struct Movement {
@@ -21,56 +32,31 @@ enum Direction {
     Left,
 }
 
-type Coords = (i32, i32);
-
-#[derive(Inpt, Debug)]
-struct World {
-    width: i32,
-    height: i32,
-    start: Coords,
-    knots: Vec<Coords>,
-}
-
 #[inpt::main]
 fn main(head_movement: Vec<Movement>) {
-    let mut world = World::from_bounds(&head_movement);
-
-    if cfg!(debug_assertions) {
-        println!("== Initial State ==");
-        println!();
-        world.print();
-        println!();
-    }
+    let mut world = World::from_movements(&head_movement);
+    print::initial_state(&world);
 
     let mut tail_coords: HashSet<_> = HashSet::new();
-    tail_coords.insert(world.knots[9]);
+    tail_coords.insert(world.tail());
 
     for m in head_movement {
-        if cfg!(debug_assertions) {
-            println!("== {m:?} == ");
-            println!();
-        }
+        print::header(format!("{m:?}"));
 
         for _ in 0..m.steps {
             world.move_head_once(m.direction);
             world.move_knots_once();
-            tail_coords.insert(world.knots[9]);
-            if cfg!(debug_assertions) {
-                world.print();
-                println!();
-            }
+            tail_coords.insert(world.tail());
+            print::step(&world);
         }
     }
-
-    if cfg!(debug_assertions) {
-        world.print_trail(&tail_coords);
-    }
+    print::trail(&tail_coords, &world);
 
     println!("Positions: {}", tail_coords.len());
 }
 
 impl World {
-    fn from_bounds(head_movement: &[Movement]) -> Self {
+    fn from_movements(head_movement: &[Movement]) -> Self {
         use Direction::*;
 
         let mut min_width = 0;
@@ -98,7 +84,6 @@ impl World {
             if y >= max_height {
                 max_height = y + 1;
             }
-
             if y < min_height {
                 min_height = y;
             }
@@ -107,17 +92,14 @@ impl World {
         let width = max_width - min_width;
         let height = max_height - min_height;
         let start = (0 - min_width, 0 - min_height);
-
-        let mut knots = Vec::new();
-        for _ in 0..10 {
-            knots.push(start);
-        }
+        let knots: Vec<_> = (0..10).map(|_| start).collect();
 
         World {
             width,
             height,
-            start,
             knots,
+            #[cfg(debug_assertions)]
+            start,
         }
     }
 
@@ -125,45 +107,12 @@ impl World {
         self.knots[0]
     }
 
+    fn tail(&self) -> Coords {
+        self.knots[9]
+    }
+
     fn set_head_position(&mut self, new_position: Coords) {
         self.knots[0] = new_position
-    }
-
-    fn print(&self) {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                if (x, y) == self.head() {
-                    print!("H");
-                    continue;
-                } else if let Some((i, _)) = self
-                    .knots
-                    .iter()
-                    .enumerate()
-                    .find(|&(_, knot)| (x, y) == *knot)
-                {
-                    // knots are one-indexed, weirdly enough.
-                    print!("{i}");
-                } else if (x, y) == self.start {
-                    print!("s");
-                } else {
-                    print!(".");
-                }
-            }
-            println!();
-        }
-    }
-
-    fn print_trail(&self, trail: &HashSet<Coords>) {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                if trail.contains(&(x, y)) {
-                    print!("#");
-                } else {
-                    print!(".");
-                }
-            }
-            println!();
-        }
     }
 
     fn move_head_once(&mut self, dir: Direction) {
@@ -220,4 +169,80 @@ impl World {
 
         self.knots[which] = (x, y);
     }
+
+    #[cfg(debug_assertions)]
+    fn print(&self) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if (x, y) == self.head() {
+                    print!("H");
+                    continue;
+                } else if let Some((i, _)) = self
+                    .knots
+                    .iter()
+                    .enumerate()
+                    .find(|&(_, knot)| (x, y) == *knot)
+                {
+                    print!("{i}");
+                } else if (x, y) == self.start {
+                    print!("s");
+                } else {
+                    print!(".");
+                }
+            }
+            println!();
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    fn print_trail(&self, trail: &HashSet<Coords>) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if trail.contains(&(x, y)) {
+                    print!("#");
+                } else {
+                    print!(".");
+                }
+            }
+            println!();
+        }
+    }
+}
+
+// printing non-sense:
+
+#[cfg(debug_assertions)]
+mod print {
+    use super::*;
+
+    pub fn initial_state(world: &World) {
+        println!("== Initial State ==");
+        println!();
+        world.print();
+        println!();
+    }
+
+    pub fn header(text: String) {
+        println!("== {} ==", &text);
+        println!();
+    }
+
+    pub fn step(world: &World) {
+        world.print();
+        println!();
+    }
+
+    pub fn trail(coords: &HashSet<Coords>, world: &World) {
+        world.print_trail(coords);
+    }
+}
+
+#[cfg(not(debug_assertions))]
+mod print {
+    use super::*;
+
+    pub fn initial_state(_: &World) {}
+    pub fn header(_: String) {}
+    pub fn step(_: &World) {}
+    pub fn trail(_: &HashSet<Coords>, _: &World) {}
 }
