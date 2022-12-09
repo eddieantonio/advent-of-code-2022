@@ -1,15 +1,22 @@
 use inpt::{self, Inpt};
 
 #[derive(Inpt, Debug, Clone, Copy)]
-enum Movement {
-    #[inpt(regex = r"R (\d+)")]
-    Right(i32),
-    #[inpt(regex = r"U (\d+)")]
-    Up(i32),
-    #[inpt(regex = r"D (\d+)")]
-    Down(i32),
-    #[inpt(regex = r"L (\d+)")]
-    Left(i32),
+#[inpt(regex = r"(\w+) (\d+)")]
+struct Movement {
+    direction: Direction,
+    steps: i32,
+}
+
+#[derive(Inpt, Debug, Clone, Copy)]
+enum Direction {
+    #[inpt(regex = r"R")]
+    Right,
+    #[inpt(regex = r"U")]
+    Up,
+    #[inpt(regex = r"D")]
+    Down,
+    #[inpt(regex = r"L")]
+    Left,
 }
 
 type Coords = (i32, i32);
@@ -36,8 +43,8 @@ fn main(head_movement: Vec<Movement>) {
     for m in head_movement {
         println!("== {m:?} == ");
         println!();
-        for _ in 0..m.steps() {
-            world.move_head_once(m);
+        for _ in 0..m.steps {
+            world.move_head_once(m.direction);
             world.print();
             println!();
             world.move_tail_once();
@@ -49,7 +56,7 @@ fn main(head_movement: Vec<Movement>) {
 
 impl World {
     fn from_bounds(head_movement: &[Movement]) -> Self {
-        use Movement::*;
+        use Direction::*;
 
         let mut min_width = 0;
         let mut max_width = 1;
@@ -59,11 +66,12 @@ impl World {
         let mut y = 0;
 
         for m in head_movement {
-            match m {
-                Right(x_d) => x += x_d,
-                Left(x_d) => x -= x_d,
-                Up(y_d) => y -= y_d,
-                Down(y_d) => y += y_d,
+            let d = m.steps;
+            match m.direction {
+                Right => x += d,
+                Left => x -= d,
+                Up => y -= d,
+                Down => y += d,
             }
 
             if x >= max_width {
@@ -120,14 +128,14 @@ impl World {
         }
     }
 
-    fn move_head_once(&mut self, m: Movement) {
+    fn move_head_once(&mut self, dir: Direction) {
         let (x, y) = self.head;
-        use Movement::*;
-        let new_pos = match m {
-            Right(_) => (x + 1, y),
-            Up(_) => (x, y - 1),
-            Down(_) => (x, y + 1),
-            Left(_) => (x - 1, y),
+        use Direction::*;
+        let new_pos = match dir {
+            Right => (x + 1, y),
+            Up => (x, y - 1),
+            Down => (x, y + 1),
+            Left => (x - 1, y),
         };
         let (x, y) = new_pos;
         assert!(x >= 0);
@@ -138,16 +146,4 @@ impl World {
     }
 
     fn move_tail_once(&mut self) {}
-}
-
-impl Movement {
-    fn steps(self) -> i32 {
-        use Movement::*;
-        match self {
-            Right(s) => s,
-            Up(s) => s,
-            Down(s) => s,
-            Left(s) => s,
-        }
-    }
 }
