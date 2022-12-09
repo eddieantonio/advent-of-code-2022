@@ -169,31 +169,40 @@ impl World {
     }
 
     fn move_knots_once(&mut self) {
-        let (x, y) = self.knots[1];
-        let dx = x - self.head().0;
-        let dy = y - self.head().1;
+        for knot in 1..10 {
+            self.move_knot_once(knot);
+        }
+    }
 
-        // Tail is "touching" head -- don't move:
+    fn move_knot_once(&mut self, which: usize) {
+        assert!(which >= 1);
+        assert!(which < 10);
+        let (x, y) = self.knots[which];
+        let (other_x, other_y) = self.knots[which - 1];
+        let dx = x - other_x;
+        let dy = y - other_y;
+
+        // Knot is "touching" other knot -- don't move:
         if dx.abs() <= 1 && dy.abs() <= 1 {
             return;
         }
 
         let x = match dx.cmp(&0) {
-            // tail is to the right; move left
+            // this knot is to the right; move left
             Ordering::Greater => x - 1,
-            // tail is to the left; move right
+            // this know is to the left; move right
             Ordering::Less => x + 1,
             Ordering::Equal => x,
         };
 
         let y = match dy.cmp(&0) {
-            // tail is below; move up
+            // this knot is below; move up
             Ordering::Greater => y - 1,
-            // tail is above; move down
+            // this knot is above; move down
             Ordering::Less => y + 1,
             Ordering::Equal => y,
         };
 
-        self.knots[1] = (x, y);
+        self.knots[which] = (x, y);
     }
 }
