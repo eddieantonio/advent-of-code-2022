@@ -35,24 +35,35 @@ struct World {
 fn main(head_movement: Vec<Movement>) {
     let mut world = World::from_bounds(&head_movement);
 
-    println!("== Initial State ==");
-    println!();
-    world.print();
-    println!();
+    if cfg!(debug_assertions) {
+        println!("== Initial State ==");
+        println!();
+        world.print();
+        println!();
+    }
 
     let mut tail_coords: HashSet<_> = HashSet::new();
     tail_coords.insert(world.knots[9]);
 
     for m in head_movement {
-        println!("== {m:?} == ");
-        println!();
+        if cfg!(debug_assertions) {
+            println!("== {m:?} == ");
+            println!();
+        }
+
         for _ in 0..m.steps {
             world.move_head_once(m.direction);
             world.move_knots_once();
             tail_coords.insert(world.knots[9]);
-            world.print();
-            println!();
+            if cfg!(debug_assertions) {
+                world.print();
+                println!();
+            }
         }
+    }
+
+    if cfg!(debug_assertions) {
+        world.print_trail(&tail_coords);
     }
 
     println!("Positions: {}", tail_coords.len());
@@ -95,16 +106,7 @@ impl World {
 
         let width = max_width - min_width;
         let height = max_height - min_height;
-        println!("width: {width}");
-        println!("height: {height}");
-        println!("last pos: {x}, {y}");
-        println!("{min_width}--{max_width}");
-        println!("{min_height}--{max_height}");
-        let x = x - min_width;
-        let y = y - min_height;
-        println!("normalized: {x}, {y}");
         let start = (0 - min_width, 0 - min_height);
-        println!("start: {start:?}");
 
         let mut knots = Vec::new();
         for _ in 0..10 {
@@ -143,6 +145,19 @@ impl World {
                     print!("{i}");
                 } else if (x, y) == self.start {
                     print!("s");
+                } else {
+                    print!(".");
+                }
+            }
+            println!();
+        }
+    }
+
+    fn print_trail(&self, trail: &HashSet<Coords>) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if trail.contains(&(x, y)) {
+                    print!("#");
                 } else {
                     print!(".");
                 }
