@@ -29,30 +29,30 @@ struct World {
     height: i32,
     start: Coords,
     head: Coords,
-    tail: Coords,
+    knots: Vec<Coords>,
 }
 
 #[inpt::main]
 fn main(head_movement: Vec<Movement>) {
     let mut world = World::from_bounds(&head_movement);
 
-    //println!("== Initial State ==");
-    //println!();
-    //world.print();
-    //println!();
+    println!("== Initial State ==");
+    println!();
+    world.print();
+    println!();
 
     let mut tail_coords: HashSet<_> = HashSet::new();
-    tail_coords.insert(world.tail);
+    tail_coords.insert(world.knots[8]);
 
     for m in head_movement {
-        //println!("== {m:?} == ");
-        //println!();
+        println!("== {m:?} == ");
+        println!();
         for _ in 0..m.steps {
             world.move_head_once(m.direction);
-            world.move_tail_once();
-            tail_coords.insert(world.tail);
-            //world.print();
-            //println!();
+            world.move_knots_once();
+            tail_coords.insert(world.knots[8]);
+            world.print();
+            println!();
         }
     }
 
@@ -107,12 +107,17 @@ impl World {
         let start = (0 - min_width, 0 - min_height);
         println!("start: {start:?}");
 
+        let mut knots = Vec::new();
+        for _ in 0..9 {
+            knots.push(start);
+        }
+
         World {
             width,
             height,
             start,
             head: start,
-            tail: start,
+            knots,
         }
     }
 
@@ -121,8 +126,14 @@ impl World {
             for x in 0..self.width {
                 if (x, y) == self.head {
                     print!("H");
-                } else if (x, y) == self.tail {
-                    print!("T");
+                    continue;
+                } else if let Some((i, _)) = self
+                    .knots
+                    .iter()
+                    .enumerate()
+                    .find(|&(i, knot)| (x, y) == *knot)
+                {
+                    print!("{}", i + 1);
                 } else if (x, y) == self.start {
                     print!("s");
                 } else {
@@ -150,8 +161,8 @@ impl World {
         self.head = new_pos;
     }
 
-    fn move_tail_once(&mut self) {
-        let (x, y) = self.tail;
+    fn move_knots_once(&mut self) {
+        let (x, y) = self.knots[0];
         let dx = x - self.head.0;
         let dy = y - self.head.1;
 
@@ -176,6 +187,6 @@ impl World {
             Ordering::Equal => y,
         };
 
-        self.tail = (x, y);
+        self.knots[0] = (x, y);
     }
 }
