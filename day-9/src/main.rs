@@ -45,8 +45,6 @@ fn main(head_movement: Vec<Movement>) {
         println!();
         for _ in 0..m.steps {
             world.move_head_once(m.direction);
-            world.print();
-            println!();
             world.move_tail_once();
             world.print();
             println!();
@@ -145,5 +143,35 @@ impl World {
         self.head = new_pos;
     }
 
-    fn move_tail_once(&mut self) {}
+    fn move_tail_once(&mut self) {
+        let (x, y) = self.tail;
+        let dx = x - self.head.0;
+        let dy = y - self.head.1;
+
+        if dx.abs() <= 1 && dy.abs() <= 1 {
+            return;
+        }
+
+        let x = if dx > 0 {
+            // tail is to the right; move left
+            x - 1
+        } else if dx < 0 {
+            // tail is to the left; move right
+            x + 1
+        } else {
+            x
+        };
+
+        let y = if dy > 0 {
+            // tail is below; move up
+            y - 1
+        } else if dy < 0 {
+            // tail is above; move down
+            y + 1
+        } else {
+            y
+        };
+
+        self.tail = (x, y);
+    }
 }
