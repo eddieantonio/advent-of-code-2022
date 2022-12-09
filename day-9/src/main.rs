@@ -28,7 +28,6 @@ struct World {
     width: i32,
     height: i32,
     start: Coords,
-    head: Coords,
     knots: Vec<Coords>,
 }
 
@@ -42,7 +41,7 @@ fn main(head_movement: Vec<Movement>) {
     println!();
 
     let mut tail_coords: HashSet<_> = HashSet::new();
-    tail_coords.insert(world.knots[8]);
+    tail_coords.insert(world.knots[9]);
 
     for m in head_movement {
         println!("== {m:?} == ");
@@ -50,7 +49,7 @@ fn main(head_movement: Vec<Movement>) {
         for _ in 0..m.steps {
             world.move_head_once(m.direction);
             world.move_knots_once();
-            tail_coords.insert(world.knots[8]);
+            tail_coords.insert(world.knots[9]);
             world.print();
             println!();
         }
@@ -108,7 +107,7 @@ impl World {
         println!("start: {start:?}");
 
         let mut knots = Vec::new();
-        for _ in 0..9 {
+        for _ in 0..10 {
             knots.push(start);
         }
 
@@ -116,24 +115,32 @@ impl World {
             width,
             height,
             start,
-            head: start,
             knots,
         }
+    }
+
+    fn head(&self) -> Coords {
+        self.knots[0]
+    }
+
+    fn set_head_position(&mut self, new_position: Coords) {
+        self.knots[0] = new_position
     }
 
     fn print(&self) {
         for y in 0..self.height {
             for x in 0..self.width {
-                if (x, y) == self.head {
+                if (x, y) == self.head() {
                     print!("H");
                     continue;
                 } else if let Some((i, _)) = self
                     .knots
                     .iter()
                     .enumerate()
-                    .find(|&(i, knot)| (x, y) == *knot)
+                    .find(|&(_, knot)| (x, y) == *knot)
                 {
-                    print!("{}", i + 1);
+                    // knots are one-indexed, weirdly enough.
+                    print!("{i}");
                 } else if (x, y) == self.start {
                     print!("s");
                 } else {
@@ -145,7 +152,7 @@ impl World {
     }
 
     fn move_head_once(&mut self, dir: Direction) {
-        let (x, y) = self.head;
+        let (x, y) = self.head();
         use Direction::*;
         let new_pos = match dir {
             Right => (x + 1, y),
@@ -158,13 +165,13 @@ impl World {
         assert!(x < self.width);
         assert!(y >= 0);
         assert!(y < self.height);
-        self.head = new_pos;
+        self.set_head_position(new_pos);
     }
 
     fn move_knots_once(&mut self) {
-        let (x, y) = self.knots[0];
-        let dx = x - self.head.0;
-        let dy = y - self.head.1;
+        let (x, y) = self.knots[1];
+        let dx = x - self.head().0;
+        let dy = y - self.head().1;
 
         // Tail is "touching" head -- don't move:
         if dx.abs() <= 1 && dy.abs() <= 1 {
@@ -187,6 +194,6 @@ impl World {
             Ordering::Equal => y,
         };
 
-        self.knots[0] = (x, y);
+        self.knots[1] = (x, y);
     }
 }
