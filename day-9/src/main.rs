@@ -1,4 +1,5 @@
 use inpt::{self, Inpt};
+use std::cmp::Ordering;
 
 #[derive(Inpt, Debug, Clone, Copy)]
 #[inpt(regex = r"(\w+) (\d+)")]
@@ -148,28 +149,25 @@ impl World {
         let dx = x - self.head.0;
         let dy = y - self.head.1;
 
+        // Tail is "touching" head -- don't move:
         if dx.abs() <= 1 && dy.abs() <= 1 {
             return;
         }
 
-        let x = if dx > 0 {
+        let x = match dx.cmp(&0) {
             // tail is to the right; move left
-            x - 1
-        } else if dx < 0 {
+            Ordering::Greater => x - 1,
             // tail is to the left; move right
-            x + 1
-        } else {
-            x
+            Ordering::Less => x - 1,
+            Ordering::Equal => x,
         };
 
-        let y = if dy > 0 {
+        let y = match dy.cmp(&0) {
             // tail is below; move up
-            y - 1
-        } else if dy < 0 {
+            Ordering::Greater => y - 1,
             // tail is above; move down
-            y + 1
-        } else {
-            y
+            Ordering::Less => y + 1,
+            Ordering::Equal => y,
         };
 
         self.tail = (x, y);
