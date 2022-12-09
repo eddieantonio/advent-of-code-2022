@@ -1,5 +1,6 @@
 use inpt::{self, Inpt};
 use std::cmp::Ordering;
+use std::collections::HashSet;
 
 #[derive(Inpt, Debug, Clone, Copy)]
 #[inpt(regex = r"(\w+) (\d+)")]
@@ -33,24 +34,29 @@ struct World {
 
 #[inpt::main]
 fn main(head_movement: Vec<Movement>) {
-    println!("{head_movement:?}");
     let mut world = World::from_bounds(&head_movement);
 
-    println!("== Initial State ==");
-    println!();
-    world.print();
-    println!();
+    //println!("== Initial State ==");
+    //println!();
+    //world.print();
+    //println!();
+
+    let mut tail_coords: HashSet<_> = HashSet::new();
+    tail_coords.insert(world.tail);
 
     for m in head_movement {
-        println!("== {m:?} == ");
-        println!();
+        //println!("== {m:?} == ");
+        //println!();
         for _ in 0..m.steps {
             world.move_head_once(m.direction);
             world.move_tail_once();
-            world.print();
-            println!();
+            tail_coords.insert(world.tail);
+            //world.print();
+            //println!();
         }
     }
+
+    println!("Positions: {}", tail_coords.len());
 }
 
 impl World {
@@ -158,7 +164,7 @@ impl World {
             // tail is to the right; move left
             Ordering::Greater => x - 1,
             // tail is to the left; move right
-            Ordering::Less => x - 1,
+            Ordering::Less => x + 1,
             Ordering::Equal => x,
         };
 
