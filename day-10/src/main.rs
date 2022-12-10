@@ -23,22 +23,46 @@ fn main(instructions: Vec<Instruction>) {
 
     let mut cpu = CPU::new(&instructions);
 
-    while cpu.tick() {
+    let mut sum_signal_strength = 0;
+
+    loop {
+        cpu.cycles_taken += 1;
+        cpu.cycles_left_for_current_instruction -= 1;
+
+        let commit = cpu.cycles_left_for_current_instruction == 0;
+        println!("Starting Cycle: {}", cpu.cycles_taken);
         println!("IR: {:?}", cpu.current_instruction());
-        println!("Cycles: {}", cpu.cycles_taken);
         println!("X: {}", cpu.x);
 
         if let Some(cycles) = cpu.signal_clock() {
             let signal_strength = cpu.x * cycles;
             println!("SIGNAL: {}", signal_strength);
+            sum_signal_strength += signal_strength;
+        };
+
+        if commit {
+            println!("COMMIT");
+            cpu.commit_current_instruction();
+            cpu.program_counter += 1;
+            if let Some(op) = cpu.current_instruction() {
+                cpu.cycles_left_for_current_instruction = op.cycles();
+            }
         }
 
+        println!("Ending Cycle: {}", cpu.cycles_taken);
+        println!("X: {}", cpu.x);
         println!();
+
+        if cpu.current_instruction().is_none() {
+            break;
+        }
     }
 
     println!("Cycles: {}", cpu.cycles_taken);
     println!("X: {}", cpu.x);
     println!();
+    
+    println!("{sum_signal_strength}");
 }
 
 impl<'a> CPU<'a> {
@@ -54,31 +78,14 @@ impl<'a> CPU<'a> {
         }
     }
 
-    fn tick(&mut self) -> bool {
+    fn commit_current_instruction(&mut self) {
         use Instruction::*;
-
-        self.cycles_taken += 1;
-
-        if self.cycles_left_for_current_instruction > 1 {
-            self.cycles_left_for_current_instruction -= 1;
-            return true;
-        }
-
-        match self.current_instruction() {
+        match self.current_instruction().unwrap() {
             AddX(op) => {
                 self.x += op;
             }
             _ => (),
         }
-
-        self.program_counter += 1;
-        if self.program_counter >= self.instructions.len() {
-            return false;
-        }
-
-        self.cycles_left_for_current_instruction = self.current_instruction().cycles();
-
-        true
     }
 
     fn signal_clock(&self) -> Option<i64> {
@@ -89,8 +96,8 @@ impl<'a> CPU<'a> {
         }
     }
 
-    fn current_instruction(&self) -> Instruction {
-        self.instructions[self.program_counter]
+    fn current_instruction(&self) -> Option<Instruction> {
+        self.instructions.get(self.program_counter).copied()
     }
 }
 
