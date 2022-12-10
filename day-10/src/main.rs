@@ -8,6 +8,8 @@ enum Instruction {
     AddX(i64),
 }
 
+const CRT_WIDTH: i64 = 40;
+
 #[derive(Debug)]
 struct CPU<'a> {
     x: i64,
@@ -19,29 +21,28 @@ struct CPU<'a> {
 
 #[inpt::main]
 fn main(instructions: Vec<Instruction>) {
-    println!("{instructions:?}");
-
     let mut cpu = CPU::new(&instructions);
-
-    let mut sum_signal_strength = 0;
 
     loop {
         cpu.cycles_taken += 1;
         cpu.cycles_left_for_current_instruction -= 1;
 
+        let current_pixel = (cpu.cycles_taken - 1) % CRT_WIDTH;
+        let sprite = cpu.x - 1..=cpu.x + 1;
+
+        if sprite.contains(&current_pixel) {
+            print!("#");
+        } else {
+            print!(".");
+        }
+
+        if current_pixel == CRT_WIDTH - 1 {
+            println!();
+        }
+
         let commit = cpu.cycles_left_for_current_instruction == 0;
-        println!("Starting Cycle: {}", cpu.cycles_taken);
-        println!("IR: {:?}", cpu.current_instruction());
-        println!("X: {}", cpu.x);
-
-        if let Some(cycles) = cpu.signal_clock() {
-            let signal_strength = cpu.x * cycles;
-            println!("SIGNAL: {}", signal_strength);
-            sum_signal_strength += signal_strength;
-        };
-
         if commit {
-            println!("COMMIT");
+            //println!("COMMIT");
             cpu.commit_current_instruction();
             cpu.program_counter += 1;
             if let Some(op) = cpu.current_instruction() {
@@ -49,20 +50,10 @@ fn main(instructions: Vec<Instruction>) {
             }
         }
 
-        println!("Ending Cycle: {}", cpu.cycles_taken);
-        println!("X: {}", cpu.x);
-        println!();
-
         if cpu.current_instruction().is_none() {
             break;
         }
     }
-
-    println!("Cycles: {}", cpu.cycles_taken);
-    println!("X: {}", cpu.x);
-    println!();
-    
-    println!("{sum_signal_strength}");
 }
 
 impl<'a> CPU<'a> {
@@ -80,19 +71,8 @@ impl<'a> CPU<'a> {
 
     fn commit_current_instruction(&mut self) {
         use Instruction::*;
-        match self.current_instruction().unwrap() {
-            AddX(op) => {
-                self.x += op;
-            }
-            _ => (),
-        }
-    }
-
-    fn signal_clock(&self) -> Option<i64> {
-        if (self.cycles_taken + 20) % 40 == 0 {
-            Some(self.cycles_taken)
-        } else {
-            None
+        if let Some(AddX(op)) = self.current_instruction() {
+            self.x += op;
         }
     }
 
