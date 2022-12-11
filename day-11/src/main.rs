@@ -1,8 +1,9 @@
 use inpt::{inpt, Inpt};
+use num::integer::lcm;
 use std::collections::vec_deque::VecDeque;
 use std::io::{self, BufRead};
 
-type WorryLevel = i32;
+type WorryLevel = i64;
 type MonkeyID = usize;
 
 #[derive(Debug)]
@@ -37,27 +38,21 @@ enum Operand {
 fn main() {
     let mut monkeys = parse_monkeys();
 
-    // Debug: Print all the monkeys!
-    for (i, monkey) in monkeys.iter().enumerate() {
-        eprintln!("Monkey {i}");
-        eprintln!("  Starting items: {:?}", monkey.items);
-        eprintln!("  Operation: new = {:?}", monkey.operation);
-        eprintln!("  Test: divisible by {:?}", monkey.divisor);
-        eprintln!("    If true: throw to monkey {:?}", monkey.throw_if_true);
-        eprintln!("    If false: throw to monkey {:?}", monkey.throw_if_false);
-        eprintln!();
-    }
+    let worry_cap = monkeys
+        .iter()
+        .map(|monkey| monkey.divisor)
+        .reduce(lcm)
+        .unwrap();
 
     // Figure out the monkey buisness 🙄
-    eprintln!("===\n");
-
-    let mut inspections_per_monkey: Vec<i32> = monkeys.iter().map(|_| 0).collect();
+    let mut inspections_per_monkey: Vec<i64> = monkeys.iter().map(|_| 0).collect();
     // FORGIVE ME FOR THIS NESTING 😭😭😭
-    for _ in 0..20 {
+    const N_ROUNDS: usize = 10000;
+    for round in 0..N_ROUNDS {
         // One round:
         for i in 0..monkeys.len() {
             // Monkey's turn:
-            eprintln!("Monkey {i}");
+            //eprintln!("Monkey {i}");
             // do this to prevent dance around with mutable borrows.
             let n_items = monkeys[i].items.len();
             for _ in 0..n_items {
@@ -65,36 +60,38 @@ fn main() {
                     let monkey = &mut monkeys[i];
                     let mut item = monkey.items.pop_front().unwrap();
                     inspections_per_monkey[i] += 1;
-                    eprintln!("  Monkey inspects an item with a worry level of {item}.");
+                    //eprintln!("  Monkey inspects an item with a worry level of {item}.");
                     // inspect the item
                     item = monkey.inspect(item);
-                    eprintln!("    Worry level is {0:?} to {item}.", monkey.operation);
+                    //eprintln!("    Worry level is {0:?} to {item}.", monkey.operation);
 
                     // After each monkey inspect an item...
                     // but before it tests the worry level...
-                    let item = item / 3;
-                    eprintln!(
-                        "    Monkey gets bored with item. Worry level is divided by 3 to {item}"
-                    );
+                    //eprintln!( "    Monkey gets bored with item. Worry level is divided by 3 to {item}");
+
+                    item %= worry_cap;
 
                     if (item % monkey.divisor) == 0 {
-                        eprintln!("    Current worry level is divisible by {}", monkey.divisor);
+                        //eprintln!("    Current worry level is divisible by {}", monkey.divisor);
                         (monkey.throw_if_true, item)
                     } else {
-                        eprintln!(
-                            "    Current worry level is not divisible by {}",
-                            monkey.divisor
-                        );
+                        //eprintln!( "    Current worry level is not divisible by {}", monkey.divisor);
                         (monkey.throw_if_false, item)
                     }
                 };
-                eprintln!("    Item with worry level {item} is thrown to {dest}");
+                //eprintln!("    Item with worry level {item} is thrown to {dest}");
                 monkeys[dest].items.push_back(item);
             }
         }
 
-        for (i, monkey) in monkeys.iter().enumerate() {
-            eprintln!("Monkey {i}: {:?}", monkey.items);
+        let when = vec![
+            1, 20, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000,
+        ];
+        if let Some(n) = when.iter().find(|&r| *r == round + 1) {
+            eprintln!("== After Round {n} ==");
+            for (i, times) in inspections_per_monkey.iter().enumerate() {
+                eprintln!("Monkey {i} inspected items {times} times");
+            }
         }
     }
 
