@@ -51,38 +51,57 @@ fn main() {
     // Figure out the monkey buisness 🙄
     eprintln!("===\n");
 
-    // One round:
-    for i in 0..monkeys.len() {
-        eprintln!("Monkey {i}");
-        let (dest, item) = {
+    let mut inspections_per_monkey: Vec<i32> = monkeys.iter().map(|_| 0).collect();
+    // FORGIVE ME FOR THIS NESTING 😭😭😭
+    for _ in 0..20 {
+        // One round:
+        for i in 0..monkeys.len() {
             // Monkey's turn:
-            let monkey = &mut monkeys[i];
+            eprintln!("Monkey {i}");
+            // do this to prevent dance around with mutable borrows.
+            let n_items = monkeys[i].items.len();
+            for _ in 0..n_items {
+                let (dest, item) = {
+                    let monkey = &mut monkeys[i];
+                    let mut item = monkey.items.pop_front().unwrap();
+                    inspections_per_monkey[i] += 1;
+                    eprintln!("  Monkey inspects an item with a worry level of {item}.");
+                    // inspect the item
+                    item = monkey.inspect(item);
+                    eprintln!("    Worry level is {0:?} to {item}.", monkey.operation);
 
-            let mut item = monkey.items.pop_front().expect("Should have an item");
-            eprintln!("  Monkey inspects an item with a worry level of {item}.");
-            // inspect the item
-            item = monkey.inspect(item);
-            eprintln!("    Worry level is {0:?} to {item}.", monkey.operation);
+                    // After each monkey inspect an item...
+                    // but before it tests the worry level...
+                    let item = item / 3;
+                    eprintln!(
+                        "    Monkey gets bored with item. Worry level is divided by 3 to {item}"
+                    );
 
-            // After each monkey inspect an item...
-            // but before it tests the worry level...
-            let item = item / 3;
-            eprintln!("    Monkey gets bored with item. Worry level is divided by 3 to {item}");
-
-            if (item % monkey.divisor) == 0 {
-                eprintln!("    Current worry level is divisible by {}", monkey.divisor);
-                (monkey.throw_if_true, item)
-            } else {
-                eprintln!(
-                    "    Current worry level is not divisible by {}",
-                    monkey.divisor
-                );
-                (monkey.throw_if_false, item)
+                    if (item % monkey.divisor) == 0 {
+                        eprintln!("    Current worry level is divisible by {}", monkey.divisor);
+                        (monkey.throw_if_true, item)
+                    } else {
+                        eprintln!(
+                            "    Current worry level is not divisible by {}",
+                            monkey.divisor
+                        );
+                        (monkey.throw_if_false, item)
+                    }
+                };
+                eprintln!("    Item with worry level {item} is thrown to {dest}");
+                monkeys[dest].items.push_back(item);
             }
-        };
-        eprintln!("    Item with worry level {item} is thrown to {dest}");
-        monkeys[dest].items.push_back(item);
+        }
+
+        for (i, monkey) in monkeys.iter().enumerate() {
+            eprintln!("Monkey {i}: {:?}", monkey.items);
+        }
     }
+
+    // DONE
+    inspections_per_monkey.sort_by_key(|n| -n);
+    let monkey_business = inspections_per_monkey[0] * inspections_per_monkey[1];
+    println!("{monkey_business}");
 }
 
 fn parse_monkeys() -> Vec<Monkey> {
