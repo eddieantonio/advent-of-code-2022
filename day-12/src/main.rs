@@ -1,6 +1,6 @@
 use inpt::{inpt, Inpt};
 use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashSet};
+use std::collections::BinaryHeap;
 use std::io::{self, BufRead};
 
 #[derive(Inpt, Debug, Copy, Clone)]
@@ -94,64 +94,56 @@ fn build_graph(heightmap: &Vec<Vec<Tile>>) -> Graph {
     let width = heightmap[0].len();
     let height = heightmap.len();
 
-    // Figure out the edges first:
-    let mut edges = HashSet::new();
-    for (y, row) in heightmap.iter().enumerate() {
-        for (x, tile) in row.iter().enumerate() {
-            if let Some(below) = heightmap.get_tile(x, y + 1) {
-                if tile.can_climb_to(below) {
-                    edges.insert(NaiveEdge((x, y), (x, y + 1)));
-                }
-            }
-
-            if let Some(right) = heightmap.get_tile(x + 1, y) {
-                if tile.can_climb_to(right) {
-                    edges.insert(NaiveEdge((x, y), (x + 1, y)));
-                }
-            }
-        }
-    }
-
-    let mut edges: Vec<_> = edges.into_iter().collect();
-    edges.sort();
-    //for edge in edges.iter() {
-    //    eprintln!(" - {edge:?}");
-    //}
-
     let mut graph = Graph {
         width,
         height,
         adjacency_list: vec![],
     };
 
-    // Now build an adjacency list based on the edges we collected.
-    // Yes, this is O(n**2) :/
-    for y in 0..height {
-        for x in 0..width {
-            let neighbours: Vec<_> = edges
-                .iter()
-                .filter_map(|&NaiveEdge(a, b)| {
-                    if a == (x, y) {
-                        Some(b)
-                    } else if b == (x, y) {
-                        Some(a)
-                    } else {
-                        None
+    // Construct neighbours:
+    for (y, row) in heightmap.iter().enumerate() {
+        for (x, tile) in row.iter().enumerate() {
+            let mut neighbours: Vec<_> = Vec::new();
+
+            if y > 0 {
+                if let Some(above) = heightmap.get_tile(x, y - 1) {
+                    if tile.can_climb_to(above) {
+                        neighbours.push(Edge {
+                            destination: graph.coords_to_index((x, y - 1)),
+                        });
                     }
-                })
-                .map(|node| Edge {
-                    destination: graph.coords_to_index(node),
-                })
-                .collect();
+                }
+            }
+
+            if x > 0 {
+                if let Some(left) = heightmap.get_tile(x - 1, y) {
+                    if tile.can_climb_to(left) {
+                        neighbours.push(Edge {
+                            destination: graph.coords_to_index((x - 1, y)),
+                        });
+                    }
+                }
+            }
+
+            if let Some(right) = heightmap.get_tile(x + 1, y) {
+                if tile.can_climb_to(right) {
+                    neighbours.push(Edge {
+                        destination: graph.coords_to_index((x + 1, y)),
+                    });
+                }
+            }
+
+            if let Some(bottom) = heightmap.get_tile(x, y + 1) {
+                if tile.can_climb_to(bottom) {
+                    neighbours.push(Edge {
+                        destination: graph.coords_to_index((x, y + 1)),
+                    });
+                }
+            }
 
             graph.adjacency_list.push(neighbours);
         }
     }
-
-    //for (node, neighbours) in graph.adjacency_list.iter().enumerate() {
-    //    eprint!("Node {node}: ");
-    //    eprintln!("{neighbours:?}");
-    //}
 
     graph
 }
@@ -161,16 +153,15 @@ impl Graph {
         x + self.width * y
     }
 
+    #[allow(unused)]
     fn index_to_coords(&self, i: usize) -> Coords {
         (i % self.width, i / self.width)
     }
 
     // This is adapated from: https://doc.rust-lang.org/std/collections/binary_heap/index.html
     fn shortest_path(&self, start: Coords, end: Coords) -> Option<usize> {
-        println!("Shortest path from {start:?} to {end:?}");
         let start = self.coords_to_index(start);
         let end = self.coords_to_index(end);
-        println!("(Nodes {start} to {end})");
 
         // Initially, distance to everything is max.
         let mut distance: Vec<usize> = (0..self.adjacency_list.len()).map(|_| usize::MAX).collect();
@@ -186,7 +177,6 @@ impl Graph {
 
         // While there are nodes to visit:
         while let Some(State { cost, position }) = heap.pop() {
-            println!("Considering {:?}:", self.index_to_coords(position));
             // We found the goal! We're done:
             if position == end {
                 return Some(cost);
@@ -207,10 +197,6 @@ impl Graph {
 
                 // Lower cost found! Add it to the frontier and continue.
                 if next.cost < distance[next.position] {
-                    println!(
-                        " - lower cost to {:?}:",
-                        self.index_to_coords(next.position)
-                    );
                     heap.push(next);
                     // We have found a better way:
                     distance[next.position] = next.cost;
@@ -249,8 +235,16 @@ impl Tile {
         normalized as i32
     }
 
+    /// This is a non-associative relationship!
+    /// a.can_climb_to(b) does not imply b.can_climb_to(a)!
     fn can_climb_to(self, other: Self) -> bool {
-        (self.height() - other.height()).abs() <= 1
+        if self.height() >= other.height() {
+            // Can infinitely fall down.
+            true
+        } else {
+            // can only step up one:
+            other.height() - self.height() == 1
+        }
     }
 }
 
