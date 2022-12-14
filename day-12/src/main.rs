@@ -52,6 +52,12 @@ fn main() {
     let s = graph.shortest_path(start, end);
     println!("{s:?}");
 
+    // This is VERY much non-optimal, but it works:
+    // basically, find the shortest path from all 'a' heights.
+    //
+    // Dijkstra actually computes the shortest path from the start to ALL nodes it can reach.
+    // If I was smart, I would be able to reuse the calculation once, but alas, this is way easier
+    // to program:
     let mut path_lengths = Vec::new();
     for (y, row) in heightmap.iter().enumerate() {
         for (x, tile) in row.iter().enumerate() {
@@ -62,11 +68,7 @@ fn main() {
             path_lengths.push(graph.shortest_path((x, y), end))
         }
     }
-    let shortest = path_lengths
-        .iter()
-        .filter(|p| p.is_some())
-        .map(|p| p.unwrap())
-        .min();
+    let shortest = path_lengths.iter().flatten().min();
     println!("{shortest:?}");
 }
 
@@ -219,19 +221,6 @@ impl Graph {
                     distance[next.position] = next.cost;
                 }
             }
-        }
-
-        // okay, this is messed up
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let i = self.coords_to_index((x, y));
-                if distance[i] < usize::MAX {
-                    print!(".");
-                } else {
-                    print!("X");
-                }
-            }
-            println!();
         }
 
         // Goal not reachable.
