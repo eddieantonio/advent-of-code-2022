@@ -1,5 +1,6 @@
 use inpt::{inpt, Inpt};
-use std::collections::HashSet;
+use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashSet};
 use std::io::{self, BufRead};
 
 #[derive(Inpt, Debug, Copy, Clone)]
@@ -16,50 +17,40 @@ trait GetTile {
     fn get_tile(&self, x: usize, y: usize) -> Option<Tile>;
 }
 
-trait GetCost {
-    fn get_cost(&mut self, pos: Coords) -> Option<&mut Cost>;
-}
-
 type Coords = (usize, usize);
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
-struct Edge(Coords, Coords);
+struct NaiveEdge(Coords, Coords);
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-enum Cost {
-    NotVisited,
-    Visited(u32),
+#[derive(Debug)]
+struct Graph {
+    width: usize,
+    #[allow(unused)]
+    height: usize,
+    adjacency_list: Vec<Vec<Edge>>,
+}
+
+#[derive(Debug)]
+struct Edge {
+    destination: usize,
+}
+
+// Copied from: https://doc.rust-lang.org/std/collections/binary_heap/index.html
+#[derive(Copy, Clone, Eq, PartialEq)]
+struct State {
+    cost: usize,
+    position: usize,
 }
 
 fn main() {
     let heightmap = heightmap_from_stdin();
-    assert!(!heightmap.is_empty());
-    let width = heightmap[0].len();
-    let height = heightmap.len();
 
-    let edges = build_graph(&heightmap);
-    let mut edges: Vec<_> = edges.into_iter().collect();
-    edges.sort();
-    for edge in edges.into_iter() {
-        println!(" - {edge:?}");
-    }
-
+    let graph = build_graph(&heightmap);
     let start = find_start(&heightmap);
-    let mut costs: Vec<Vec<Cost>> = (0..height)
-        .map(|_| (0..width).map(|_| Cost::NotVisited).collect())
-        .collect();
+    let end = find_end(&heightmap);
 
-    *costs.get_cost(start).unwrap() = Cost::Visited(0);
-
-    for (_, row) in costs.iter().enumerate() {
-        for (_, cost) in row.iter().enumerate() {
-            match cost {
-                Cost::NotVisited => print!("∞"),
-                Cost::Visited(n) => print!("{n}"),
-            }
-        }
-        println!();
-    }
+    let s = graph.shortest_path(start, end);
+    println!("{s:?}");
 }
 
 fn heightmap_from_stdin() -> Vec<Vec<Tile>> {
@@ -87,26 +78,162 @@ fn find_start(heightmap: &[Vec<Tile>]) -> Coords {
     panic!("start not found!");
 }
 
-fn build_graph(heightmap: &Vec<Vec<Tile>>) -> HashSet<Edge> {
-    let mut edges = HashSet::new();
+fn find_end(heightmap: &[Vec<Tile>]) -> Coords {
+    for (y, row) in heightmap.iter().enumerate() {
+        for (x, tile) in row.iter().enumerate() {
+            if matches!(tile, Tile::End) {
+                return (x, y);
+            }
+        }
+    }
+    panic!("end not found!");
+}
 
+fn build_graph(heightmap: &Vec<Vec<Tile>>) -> Graph {
+    assert!(!heightmap.is_empty());
+    let width = heightmap[0].len();
+    let height = heightmap.len();
+
+    // Figure out the edges first:
+    let mut edges = HashSet::new();
     for (y, row) in heightmap.iter().enumerate() {
         for (x, tile) in row.iter().enumerate() {
             if let Some(below) = heightmap.get_tile(x, y + 1) {
-                if tile.compatible_height(below) {
-                    edges.insert(Edge((x, y), (x, y + 1)));
+                if tile.can_climb_to(below) {
+                    edges.insert(NaiveEdge((x, y), (x, y + 1)));
                 }
             }
 
             if let Some(right) = heightmap.get_tile(x + 1, y) {
-                if tile.compatible_height(right) {
-                    edges.insert(Edge((x, y), (x + 1, y)));
+                if tile.can_climb_to(right) {
+                    edges.insert(NaiveEdge((x, y), (x + 1, y)));
                 }
             }
         }
     }
 
-    edges
+    let mut edges: Vec<_> = edges.into_iter().collect();
+    edges.sort();
+    //for edge in edges.iter() {
+    //    eprintln!(" - {edge:?}");
+    //}
+
+    let mut graph = Graph {
+        width,
+        height,
+        adjacency_list: vec![],
+    };
+
+    // Now build an adjacency list based on the edges we collected.
+    // Yes, this is O(n**2) :/
+    for y in 0..height {
+        for x in 0..width {
+            let neighbours: Vec<_> = edges
+                .iter()
+                .filter_map(|&NaiveEdge(a, b)| {
+                    if a == (x, y) {
+                        Some(b)
+                    } else if b == (x, y) {
+                        Some(a)
+                    } else {
+                        None
+                    }
+                })
+                .map(|node| Edge {
+                    destination: graph.coords_to_index(node),
+                })
+                .collect();
+
+            graph.adjacency_list.push(neighbours);
+        }
+    }
+
+    //for (node, neighbours) in graph.adjacency_list.iter().enumerate() {
+    //    eprint!("Node {node}: ");
+    //    eprintln!("{neighbours:?}");
+    //}
+
+    graph
+}
+
+impl Graph {
+    fn coords_to_index(&self, (x, y): Coords) -> usize {
+        x + self.width * y
+    }
+
+    fn index_to_coords(&self, i: usize) -> Coords {
+        (i % self.width, i / self.width)
+    }
+
+    // This is adapated from: https://doc.rust-lang.org/std/collections/binary_heap/index.html
+    fn shortest_path(&self, start: Coords, end: Coords) -> Option<usize> {
+        println!("Shortest path from {start:?} to {end:?}");
+        let start = self.coords_to_index(start);
+        let end = self.coords_to_index(end);
+        println!("(Nodes {start} to {end})");
+
+        // Initially, distance to everything is max.
+        let mut distance: Vec<usize> = (0..self.adjacency_list.len()).map(|_| usize::MAX).collect();
+
+        let mut heap = BinaryHeap::new();
+
+        // We start at the start!
+        distance[start] = 0;
+        heap.push(State {
+            cost: 0,
+            position: start,
+        });
+
+        // While there are nodes to visit:
+        while let Some(State { cost, position }) = heap.pop() {
+            println!("Considering {:?}:", self.index_to_coords(position));
+            // We found the goal! We're done:
+            if position == end {
+                return Some(cost);
+            }
+
+            // Have we already found a better way to this node?
+            if cost > distance[position] {
+                continue;
+            }
+
+            // For each neighbour, see if we can find a way with a lower cost going through this
+            // node:
+            for edge in &self.adjacency_list[position] {
+                let next = State {
+                    cost: cost + 1,
+                    position: edge.destination,
+                };
+
+                // Lower cost found! Add it to the frontier and continue.
+                if next.cost < distance[next.position] {
+                    println!(
+                        " - lower cost to {:?}:",
+                        self.index_to_coords(next.position)
+                    );
+                    heap.push(next);
+                    // We have found a better way:
+                    distance[next.position] = next.cost;
+                }
+            }
+        }
+
+        // okay, this is messed up
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let i = self.coords_to_index((x, y));
+                if distance[i] < usize::MAX {
+                    print!(".");
+                } else {
+                    print!("X");
+                }
+            }
+            println!();
+        }
+
+        // Goal not reachable.
+        None
+    }
 }
 
 impl Tile {
@@ -122,7 +249,7 @@ impl Tile {
         normalized as i32
     }
 
-    fn compatible_height(self, other: Self) -> bool {
+    fn can_climb_to(self, other: Self) -> bool {
         (self.height() - other.height()).abs() <= 1
     }
 }
@@ -137,14 +264,22 @@ impl GetTile for Vec<Vec<Tile>> {
     }
 }
 
-impl GetCost for Vec<Vec<Cost>> {
-    fn get_cost(&mut self, (x, y): Coords) -> Option<&mut Cost> {
-        if let Some(row) = self.get_mut(y) {
-            if let Some(cost) = row.get_mut(x) {
-                return Some(cost);
-            }
-        }
+// Copied from https://doc.rust-lang.org/std/collections/binary_heap/index.html
+impl Ord for State {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // We flip the order of costs.
+        // In case of ties, we compare positions -- this step is necessary to make implementatinos
+        // of `PartialEq` and `Ord` consistent.
+        other
+            .cost
+            .cmp(&self.cost)
+            .then_with(|| self.position.cmp(&other.position))
+    }
+}
 
-        None
+impl PartialOrd for State {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        // There's a complete ordering, so just delegate:
+        Some(self.cmp(other))
     }
 }
