@@ -51,6 +51,23 @@ fn main() {
 
     let s = graph.shortest_path(start, end);
     println!("{s:?}");
+
+    let mut path_lengths = Vec::new();
+    for (y, row) in heightmap.iter().enumerate() {
+        for (x, tile) in row.iter().enumerate() {
+            if !matches!(tile, Tile::Start | Tile::Elevation('a')) {
+                continue;
+            }
+
+            path_lengths.push(graph.shortest_path((x, y), end))
+        }
+    }
+    let shortest = path_lengths
+        .iter()
+        .filter(|p| p.is_some())
+        .map(|p| p.unwrap())
+        .min();
+    println!("{shortest:?}");
 }
 
 fn heightmap_from_stdin() -> Vec<Vec<Tile>> {
