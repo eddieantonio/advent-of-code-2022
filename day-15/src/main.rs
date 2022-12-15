@@ -1,6 +1,5 @@
 use inpt::Inpt;
 use std::cmp;
-use std::collections::HashSet;
 use std::ops::Range;
 
 #[derive(Inpt, Debug, Copy, Clone)]
@@ -19,43 +18,40 @@ struct Sensor {
 }
 
 #[derive(Debug)]
-struct Bounds {
-    min_x: i64,
-    min_y: i64,
-    max_x: i64,
-    max_y: i64,
-}
-
-#[derive(Debug)]
 struct Ranges {
     ranges: Vec<Range<i64>>,
 }
 
+const MAX_X: i64 = 20;
+const MAX_Y: i64 = 20;
+//const LINE: i64 = 10;
 const LINE: i64 = 2000000;
 
 #[inpt::main]
 fn main(sensors: Vec<Sensor>) {
-    let mut bounds = Bounds::new(sensors[0].location);
+    let range = exclusion_area(&sensors, LINE);
+    println!("{range:?}, {}", range.coverage());
+}
+
+/// Return the ranges for
+fn exclusion_area(sensors: &[Sensor], y: i64) -> Ranges {
+    let mut ranges = Ranges::new();
     for sensor in sensors.iter() {
-        bounds.expand(sensor.location);
-        bounds.expand(sensor.closest_beacon);
+        let range = sensor.range_at(y);
+        ranges.add(range);
     }
 
-    println!("{bounds:?}");
-
-    let mut ranges = Ranges::new();
-    let mut beacons_on_line_x_pos = HashSet::new();
     for sensor in sensors.iter() {
-        let range = sensor.range_at(LINE);
-        ranges.add(range);
-
-        if sensor.closest_beacon.y == LINE {
-            beacons_on_line_x_pos.insert(sensor.closest_beacon.x);
+        if sensor.closest_beacon.y == y {
+            ranges.remove_point(sensor.closest_beacon.x);
         }
     }
-    let n_beacons = beacons_on_line_x_pos.len() as i64;
 
-    println!("Coverage: {}", ranges.coverage() - n_beacons);
+    ranges
+}
+
+fn tuning_frequency(x: i64, y: i64) -> i64 {
+    x * 4000000 + y
 }
 
 impl Sensor {
@@ -84,27 +80,6 @@ impl Sensor {
 
     fn y(&self) -> i64 {
         self.location.y
-    }
-}
-
-impl Bounds {
-    fn new(initial: Point) -> Self {
-        let Point { x, y } = initial;
-
-        Bounds {
-            min_x: x,
-            max_x: x,
-            min_y: y,
-            max_y: y,
-        }
-    }
-
-    fn expand(&mut self, point: Point) {
-        let Point { x, y } = point;
-        self.min_x = cmp::min(self.min_x, x);
-        self.max_x = cmp::max(self.max_x, x);
-        self.min_y = cmp::min(self.min_y, y);
-        self.max_y = cmp::max(self.max_y, y);
     }
 }
 
@@ -181,6 +156,36 @@ impl Ranges {
 
         // Ranges must be sorted:
         self.ranges.sort_by_key(|r| r.start);
+    }
+
+    fn remove_point(&mut self, point: i64) {
+        let Some(i) = self._which_range_contains(point) else {
+            // No range contains point. Ignore it.
+            return;
+        };
+
+        // Pull out that old range:
+        let old_range = self.ranges.swap_remove(i);
+
+        // Make two new ranges excluding the point.
+        let first_half = old_range.start..point;
+        let second_half = (point + 1)..old_range.end;
+
+        self.ranges.push(first_half);
+        self.ranges.push(second_half);
+
+        // Maintain the sorted invariant:
+        self.ranges.sort_by_key(|r| r.start);
+    }
+
+    fn _which_range_contains(&self, point: i64) -> Option<usize> {
+        for (i, range) in self.ranges.iter().enumerate() {
+            if range.contains(&point) {
+                return Some(i);
+            }
+        }
+
+        None
     }
 
     fn coverage(&self) -> i64 {
