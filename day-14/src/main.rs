@@ -14,7 +14,6 @@ struct Cave {
     max_x: IType,
     max_y: IType,
     current_sand_grain: Option<(usize, usize)>,
-    has_moved_sand_into_the_abyss: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -24,12 +23,13 @@ enum Material {
     SandAtRest,
 }
 
+const SAND_ORIGIN: Coords = (500, 0);
+
 fn main() {
     let paths = parse_paths();
 
-    let sand_origin = (500, 0);
-    let (mut min_x, mut min_y) = sand_origin;
-    let (mut max_x, mut max_y) = sand_origin;
+    let (mut min_x, mut min_y) = SAND_ORIGIN;
+    let (mut max_x, mut max_y) = SAND_ORIGIN;
 
     for path in paths.iter() {
         for &((x0, y0), (x1, y1)) in path {
@@ -43,37 +43,40 @@ fn main() {
     let mut cave = Cave::new((min_x, min_y), (max_x, max_y));
     cave.add_rocks(&paths);
 
-    let mut grains_dropped = 0;
-    loop {
+    let mut grains_at_rest = 0;
+    while !cave.has_sand_resting_at_origin() {
         println!("== adding sand ==");
-        cave.add_sand(sand_origin);
-        cave.print();
-
+        cave.add_sand(SAND_ORIGIN);
         cave.simulate_until_rest();
+        grains_at_rest += 1;
         cave.print();
         println!();
-
-        if cave.has_moved_sand_into_the_abyss {
-            break;
-        } else {
-            grains_dropped += 1;
-        }
     }
-    println!("{grains_dropped}");
+    println!("{grains_at_rest}");
 }
 
 #[derive(Debug)]
 enum MoveInto {
     EmptySquare(GridPosition),
     RestingPosition(GridPosition),
-    Abyss,
+    LeftAbyss,
+    RightAbyss,
 }
 
 impl Cave {
     fn new((min_x, min_y): Coords, (max_x, max_y): Coords) -> Self {
-        let grid = (min_y..=max_y)
+        // Make room for the floor:
+        let max_y = max_y + 2;
+
+        let mut grid: Vec<Vec<Material>> = (min_y..=max_y)
             .map(|_| (min_x..=max_x).map(|_| Material::Air).collect())
             .collect();
+
+        // Draw the infinite floor
+        let floor = grid.iter_mut().rev().next().unwrap();
+        for tile in floor.iter_mut() {
+            *tile = Material::Rock;
+        }
 
         Cave {
             min_x,
@@ -82,13 +85,17 @@ impl Cave {
             max_y,
             grid,
             current_sand_grain: None,
-            has_moved_sand_into_the_abyss: false,
         }
+    }
+
+    fn has_sand_resting_at_origin(&self) -> bool {
+        let (x, y) = self.coords_to_indices(SAND_ORIGIN);
+        matches!(self.grid[y][x], Material::SandAtRest)
     }
 
     fn simulate_until_rest(&mut self) {
         while self.current_sand_grain.is_some() {
-            self.simulate_one()
+            self.simulate_one();
         }
     }
 
@@ -101,9 +108,31 @@ impl Cave {
                 self.current_sand_grain = None;
                 self.grid[y][x] = Material::SandAtRest;
             }
-            MoveInto::Abyss => {
-                self.current_sand_grain = None;
-                self.has_moved_sand_into_the_abyss = true;
+            MoveInto::LeftAbyss => {
+                // Have to stretch all the grids and try again.
+                for row in self.grid.iter_mut() {
+                    row.insert(0, Material::Air);
+                }
+
+                let floor = self.grid.iter_mut().rev().next().unwrap();
+                floor[0] = Material::Rock;
+
+                let (x, y) = self.current_sand_grain.unwrap();
+
+                // All coordinates got shifted by one.
+                self.current_sand_grain = Some((x + 1, y));
+                self.min_x -= 1;
+            }
+            MoveInto::RightAbyss => {
+                // Have to stretch all the grids and try again.
+                for row in self.grid.iter_mut() {
+                    row.push(Material::Air);
+                }
+                let floor = self.grid.iter_mut().rev().next().unwrap();
+                let tile = floor.iter_mut().rev().next().unwrap();
+                *tile = Material::Rock;
+
+                self.max_x += 1;
             }
         }
     }
@@ -113,10 +142,7 @@ impl Cave {
             .current_sand_grain
             .expect("should only simulate with sand");
 
-        // Check if we'll drop straight into the abyss:
-        if y == self.grid.len() - 1 {
-            return MoveInto::Abyss;
-        }
+        assert!(y < self.grid.len() - 1, "sand below the infinite floor");
 
         // Look straight down
         if self.grid[y + 1][x].is_empty() {
@@ -125,7 +151,7 @@ impl Cave {
 
         // Before we can look left, check if we'll drop into the abyss:
         if x == 0 {
-            return MoveInto::Abyss;
+            return MoveInto::LeftAbyss;
         }
 
         // Look one step down and to the left
@@ -135,7 +161,7 @@ impl Cave {
 
         // Before we can look right, see if it leads into the abyss:
         if x == self.grid[0].len() - 1 {
-            return MoveInto::Abyss;
+            return MoveInto::RightAbyss;
         }
 
         // Look one step down and to the right
@@ -153,7 +179,6 @@ impl Cave {
 
         assert_eq!(0, self.min_y);
         for (y, row) in self.grid.iter().enumerate() {
-            print!("{y} ");
             for (x, tile) in row.iter().enumerate() {
                 if (x, y) == sand_location {
                     assert_eq!(*tile, Material::Air);
