@@ -11,8 +11,6 @@ enum Data {
 fn main() {
     let stdin = io::stdin();
     let mut lines = stdin.lock().lines();
-    //let f = File::open("test-0.txt").unwrap();
-    //let mut lines = BufReader::new(f).lines();
 
     let mut pairs: Vec<_> = Vec::new();
     loop {
@@ -131,6 +129,7 @@ impl<'a> Parser<'a> {
         self.accept('[');
 
         if self.peek() == Some(']') {
+            self.accept(']');
             return Data::List(vec![]);
         }
 
