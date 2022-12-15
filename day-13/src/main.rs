@@ -12,7 +12,7 @@ fn main() {
     let stdin = io::stdin();
     let mut lines = stdin.lock().lines();
 
-    let mut pairs: Vec<_> = Vec::new();
+    let mut packets: Vec<_> = Vec::new();
     loop {
         let line_1 = lines.next().unwrap().unwrap();
         let line_2 = lines.next().unwrap().unwrap();
@@ -20,53 +20,48 @@ fn main() {
         let left = parse(&line_1);
         let right = parse(&line_2);
 
-        pairs.push((left, right));
+        packets.push(left);
+        packets.push(right);
 
         if lines.next().is_none() {
             break;
         }
     }
 
-    let mut sum = 0;
+    packets.push(parse("[[2]]"));
+    packets.push(parse("[[6]]"));
 
-    for (i, (left, right)) in pairs.iter().enumerate() {
-        let index = i + 1;
-        println!("== Pair {index} ==");
+    packets.sort_by(|left, right| {
         if compare(left, right) == Some(true) {
-            sum += index;
+            Ordering::Less
+        } else {
+            Ordering::Greater
         }
-        println!();
+    });
+
+    let mut index_start = None;
+    let mut index_end = None;
+    for (i, p) in packets.iter().enumerate() {
+        let yes_this_is_wasteful = p.to_string();
+        if &yes_this_is_wasteful == "[[2]]" {
+            index_start = Some(i + 1);
+        }
+
+        if &yes_this_is_wasteful == "[[6]]" {
+            index_end = Some(i + 1);
+        }
     }
 
-    println!("{sum}");
+    let index_start = index_start.unwrap();
+    let index_end = index_end.unwrap();
+    println!("{}", index_start * index_end);
 }
 
 fn compare(left: &Data, right: &Data) -> Option<bool> {
-    _compare(left, right, 0)
-}
-
-fn indent(depth: usize) {
-    for _ in 0..depth {
-        print!(" ");
-    }
-}
-
-fn _compare(left: &Data, right: &Data, depth: usize) -> Option<bool> {
-    indent(depth);
-    println!("- Compare {left} vs {right}");
-
     match (left, right) {
         (Data::Int(a), Data::Int(b)) => match a.cmp(b) {
-            Ordering::Less => {
-                indent(depth);
-                println!(" - Left side is smaller, so inputs are in the right order");
-                Some(true)
-            }
-            Ordering::Greater => {
-                indent(depth);
-                println!(" - Right side is smaller, so inputs are not in the right order");
-                Some(false)
-            }
+            Ordering::Less => Some(true),
+            Ordering::Greater => Some(false),
             Ordering::Equal => None,
         },
         (Data::List(a), Data::List(b)) => {
@@ -75,20 +70,14 @@ fn _compare(left: &Data, right: &Data, depth: usize) -> Option<bool> {
 
             loop {
                 match (a.next(), b.next()) {
-                    (Some(v_a), Some(v_b)) => match _compare(v_a, v_b, depth + 1) {
+                    (Some(v_a), Some(v_b)) => match compare(v_a, v_b) {
                         result @ Some(_) => return result,
                         _ => continue,
                     },
                     (None, Some(_)) => {
-                        indent(depth);
-                        println!(" - Left side ran out of items, so inputs are in the right order");
                         return Some(true);
                     }
                     (Some(_), None) => {
-                        indent(depth);
-                        println!(
-                            " - Right side ran out of items, so inputs are not in the right order"
-                        );
                         return Some(false);
                     }
                     (None, None) => {
@@ -98,16 +87,12 @@ fn _compare(left: &Data, right: &Data, depth: usize) -> Option<bool> {
             }
         }
         (Data::Int(a), b) => {
-            indent(depth);
-            println!(" - Mixed types; convert left to [{a}] and retry comparison");
             let l = Data::List(vec![Data::Int(*a)]);
-            _compare(&l, b, depth + 1)
+            compare(&l, b)
         }
         (a, Data::Int(b)) => {
-            indent(depth);
-            println!(" - Mixed types; convert right to [{b}] and retry comparison");
             let l = Data::List(vec![Data::Int(*b)]);
-            _compare(a, &l, depth + 1)
+            compare(a, &l)
         }
     }
 }
