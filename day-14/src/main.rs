@@ -12,6 +12,7 @@ struct Cave {
     min_x: IType,
     min_y: IType,
     max_x: IType,
+    #[allow(dead_code)]
     max_y: IType,
     current_sand_grain: Option<(usize, usize)>,
 }
@@ -45,12 +46,9 @@ fn main() {
 
     let mut grains_at_rest = 0;
     while !cave.has_sand_resting_at_origin() {
-        println!("== adding sand ==");
         cave.add_sand(SAND_ORIGIN);
         cave.simulate_until_rest();
         grains_at_rest += 1;
-        cave.print();
-        println!();
     }
     println!("{grains_at_rest}");
 }
@@ -94,8 +92,10 @@ impl Cave {
     }
 
     fn simulate_until_rest(&mut self) {
+        self.print_frame();
         while self.current_sand_grain.is_some() {
             self.simulate_one();
+            self.print_frame();
         }
     }
 
@@ -172,6 +172,23 @@ impl Cave {
         MoveInto::RestingPosition((x, y))
     }
 
+    #[cfg(not(feature = "animate"))]
+    #[inline(always)]
+    fn print_frame(&self) {
+        // do nothing
+    }
+
+    #[cfg(feature = "animate")]
+    fn print_frame(&self) {
+        use std::{thread, time};
+        print!("\x1B[2J\x1B[1;1H");
+        self.print();
+        // 20ms == 50 FPS
+        let one_frame = time::Duration::from_millis(20);
+        thread::sleep(one_frame);
+    }
+
+    #[cfg(feature = "animate")]
     fn print(&self) {
         let sand_location = self
             .current_sand_grain
@@ -269,6 +286,7 @@ fn parse_paths() -> Vec<Vec<LineSegment>> {
 }
 
 impl Material {
+    #[cfg(feature = "animate")]
     fn ascii_art(self) -> char {
         use Material::*;
         match self {
