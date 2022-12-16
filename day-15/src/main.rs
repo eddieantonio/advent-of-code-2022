@@ -39,8 +39,6 @@ fn find_distress_signal(sensors: &[Sensor]) -> (i64, i64) {
     for y in 0..MAX_Y {
         let ruled_out_areas = exclusion_area(sensors, y, false);
         let possible_areas = ruled_out_areas.invert(0..MAX_X);
-        //println!("Ruled out: {:?}", ruled_out_areas);
-        //println!(" Inverted: {:?}", possible_areas);
 
         if !possible_areas.is_empty() {
             let x = possible_areas.start();
@@ -245,10 +243,6 @@ impl Ranges {
 
         // Maintain the sorted invariant:
         self.ranges.sort_by_key(|r| r.start);
-    }
-
-    fn contain(&self, point: i64) -> bool {
-        self._which_range_contains(point).is_some()
     }
 
     fn _which_range_contains(&self, point: i64) -> Option<usize> {
