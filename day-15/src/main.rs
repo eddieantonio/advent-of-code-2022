@@ -22,28 +22,48 @@ struct Ranges {
     ranges: Vec<Range<i64>>,
 }
 
-const MAX_X: i64 = 20;
-const MAX_Y: i64 = 20;
-//const LINE: i64 = 10;
-const LINE: i64 = 2000000;
+//const MAX_X: i64 = 20;
+//const MAX_Y: i64 = 20;
+const MAX_X: i64 = 4000000;
+const MAX_Y: i64 = 4000000;
 
 #[inpt::main]
 fn main(sensors: Vec<Sensor>) {
-    let range = exclusion_area(&sensors, LINE);
-    println!("{range:?}, {}", range.coverage());
+    let (x, y) = find_distress_signal(&sensors);
+    println!("x={x}, y={y}");
+    let solution = tuning_frequency(x, y);
+    println!("solution: {solution}");
+}
+
+fn find_distress_signal(sensors: &[Sensor]) -> (i64, i64) {
+    for y in 0..MAX_Y {
+        let ruled_out_areas = exclusion_area(sensors, y, false);
+        let possible_areas = ruled_out_areas.invert(0..MAX_X);
+        //println!("Ruled out: {:?}", ruled_out_areas);
+        //println!(" Inverted: {:?}", possible_areas);
+
+        if !possible_areas.is_empty() {
+            let x = possible_areas.start();
+            return (x, y);
+        }
+    }
+
+    panic!("Did not find distress signal!");
 }
 
 /// Return the ranges for
-fn exclusion_area(sensors: &[Sensor], y: i64) -> Ranges {
+fn exclusion_area(sensors: &[Sensor], y: i64, remove_existing_beacons: bool) -> Ranges {
     let mut ranges = Ranges::new();
     for sensor in sensors.iter() {
         let range = sensor.range_at(y);
         ranges.add(range);
     }
 
-    for sensor in sensors.iter() {
-        if sensor.closest_beacon.y == y {
-            ranges.remove_point(sensor.closest_beacon.x);
+    if remove_existing_beacons {
+        for sensor in sensors.iter() {
+            if sensor.closest_beacon.y == y {
+                ranges.remove_point(sensor.closest_beacon.x);
+            }
         }
     }
 
@@ -55,7 +75,8 @@ fn tuning_frequency(x: i64, y: i64) -> i64 {
 }
 
 impl Sensor {
-    fn manhattan_radius(&self) -> i64 {
+    #[inline]
+    const fn manhattan_radius(&self) -> i64 {
         (self.location.x - self.closest_beacon.x).abs()
             + (self.location.y - self.closest_beacon.y).abs()
     }
@@ -74,11 +95,13 @@ impl Sensor {
         lower..upper
     }
 
-    fn x(&self) -> i64 {
+    #[inline(always)]
+    const fn x(&self) -> i64 {
         self.location.x
     }
 
-    fn y(&self) -> i64 {
+    #[inline(always)]
+    const fn y(&self) -> i64 {
         self.location.y
     }
 }
@@ -99,7 +122,7 @@ impl Ranges {
             return;
         }
 
-        let mut intersections = Vec::new();
+        let mut intersections = Vec::with_capacity(self.ranges.len());
 
         // We need to figure out where the range goes.
         for (i, existing_range) in self.ranges.iter().enumerate() {
@@ -158,6 +181,52 @@ impl Ranges {
         self.ranges.sort_by_key(|r| r.start);
     }
 
+    fn invert(&self, over: Range<i64>) -> Ranges {
+        let overlapping_ranges: Vec<Range<i64>> = self
+            .ranges
+            .iter()
+            .filter(|range| range.end >= over.start)
+            .filter(|range| range.start < over.end)
+            .cloned()
+            .collect();
+
+        let mut result = Ranges::new();
+
+        if overlapping_ranges.is_empty() {
+            // it's the entire range:
+            result.add(over);
+            return result;
+        }
+
+        let first = overlapping_ranges.first().unwrap();
+        let last = overlapping_ranges.iter().rev().next().unwrap();
+
+        // the range fully subsumes the other tnage
+        if first.start <= over.start && first.end >= over.end {
+            // empty range:
+            return result;
+        }
+
+        result.add(over.start..first.start);
+        for (a, b) in overlapping_ranges
+            .iter()
+            .zip(overlapping_ranges.iter().skip(1))
+        {
+            result.add(a.end..b.start);
+        }
+        result.add(last.end..over.end);
+
+        result
+    }
+
+    fn is_empty(&self) -> bool {
+        self.ranges.is_empty()
+    }
+
+    fn start(&self) -> i64 {
+        self.ranges.first().expect("got start of empty range").start
+    }
+
     fn remove_point(&mut self, point: i64) {
         let Some(i) = self._which_range_contains(point) else {
             // No range contains point. Ignore it.
@@ -178,6 +247,10 @@ impl Ranges {
         self.ranges.sort_by_key(|r| r.start);
     }
 
+    fn contain(&self, point: i64) -> bool {
+        self._which_range_contains(point).is_some()
+    }
+
     fn _which_range_contains(&self, point: i64) -> Option<usize> {
         for (i, range) in self.ranges.iter().enumerate() {
             if range.contains(&point) {
@@ -188,6 +261,7 @@ impl Ranges {
         None
     }
 
+    #[allow(unused)]
     fn coverage(&self) -> i64 {
         self.ranges
             .iter()
